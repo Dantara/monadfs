@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 446c9b8357161a5ca68a25207d91659d50a19f4cb45151c64303ffb6a85fc138
+-- hash: d5c7f8edc7681a8fa5cd71ae9d9b466adce53873ba410b1e88d55d16d168e7aa
 
 name:           monadfs
 version:        0.1.0.0
@@ -35,6 +35,7 @@ library
       Paths_monadfs
   hs-source-dirs:
       shared
+  ghc-options: -Wall -fno-warn-type-defaults
   build-depends:
       aeson
     , base >=4.7 && <5
@@ -48,7 +49,7 @@ executable monadfs-client
       Paths_monadfs
   hs-source-dirs:
       client
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -fno-warn-type-defaults -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       aeson
     , base >=4.7 && <5
@@ -63,7 +64,7 @@ executable monadfs-name-server
       Paths_monadfs
   hs-source-dirs:
       name-server
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -fno-warn-type-defaults -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       aeson
     , base >=4.7 && <5
@@ -78,7 +79,7 @@ executable monadfs-storage-server
       Paths_monadfs
   hs-source-dirs:
       storage-server
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -fno-warn-type-defaults -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       aeson
     , base >=4.7 && <5
@@ -94,7 +95,7 @@ test-suite monadfs-test
       Paths_monadfs
   hs-source-dirs:
       test
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -fno-warn-type-defaults -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       aeson
     , base >=4.7 && <5
