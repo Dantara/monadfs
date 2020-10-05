@@ -1,2 +1,5 @@
 .stack-work/
 *~
+
+# VSCode workspace
+*.code-workspace
