@@ -31,12 +31,23 @@ data MyEnv = MyEnv Manager BaseUrl (InputT IO ())
 data InputCommand
   = ExitCmd
   | SkipCmd
-  | HiCmd
+  | HelpCmd
+  | InitCmd 
+  | PWDCmd 
+  | MyIpCmd
   | EchoCmd String
   | CowSayCmd String
-  | MyIpCmd
   | TouchCmd String
+  | GetCmd String
+  | PutCmd String
+  | RemoveCmd String
+  | FileInfoCmd String
+  | CopyCmd String String
   | MoveCmd String String
+  | MakeDirCmd String
+  | RemoveDirCmd String
+  | DirInfoCmd String
+  | ChangeDirCmd String
   deriving (Show, Eq)
 
 commands :: Parsec String () InputCommand
@@ -49,11 +60,22 @@ commands =
         )
         >> return ExitCmd,
       string "hello" >> return HiCmd,
+      string "init" >> return InitCmd,
+      string "pwd" >> return PWDCmd,
+      string "help" >> return HelpCmd,
       string "echo" >> spaces >> EchoCmd <$> many anyChar,
       string "cowsay" >> spaces >> CowSayCmd <$> many anyChar,
       string "myip" >> return MyIpCmd,
       string "touch" >> spaces >> TouchCmd <$> pathParse,
+      string "get" >> spaces >> GetCMD <$> pathParse,
+      string "put" >> spaces >> PutCMD <$> pathParse,
+      string "rm" >> spaces >> RemoveCMD <$> pathParse,
+      string "fileinfo" >> spaces >> FileInfoCMD <$> pathParse,
+      string "cp" >> spaces >> CopyCmd <$> pathParse <*> (spaces >> pathParse)
       string "mv" >> spaces >> MoveCmd <$> pathParse <*> (spaces >> pathParse)
+      string "mkdir" >> spaces >> MakeDirCmd <$> pathParse,
+      string "rmdir" >> spaces >> RemoveDirCmd <$> pathParse,
+      string "dirinfo" >> spaces >> DirInfoCmd <$> pathParse,
     ]
 
 pathParse :: Parsec String () String
@@ -73,6 +95,8 @@ evalCommand mngr loop MyIpCmd =
   liftIO (runClientM getIP (mkClientEnv mngr myURL))
     >>= outputStrLn . show >> loop mngr
 evalCommand mngr loop HiCmd = outputStrLn "hi!" >> loop mngr
+evalCommand mngr loop HelpCmd = outputStrLn "init\nhello\npwd\ntouch\nget\nput\nrm\nfileinfo\ncp\nmv\nmkdir\nrmdir\ndirinfo\nhelp\ncowsay\necho\nmyip"
+    >> loop mngr
 
 run :: IO ()
 run = runInputT defaultSettings welcome
