@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 39b6ad2dc4cefe3a7b736decc7005a0290f993f656291a872443a72a21b4de8d
+-- hash: 446c9b8357161a5ca68a25207d91659d50a19f4cb45151c64303ffb6a85fc138
 
 name:           monadfs
 version:        0.1.0.0
@@ -27,13 +27,19 @@ source-repository head
 
 library
   exposed-modules:
+      API
+      API.NameServer
+      API.StorageServer
       Lib
   other-modules:
       Paths_monadfs
   hs-source-dirs:
       shared
   build-depends:
-      base >=4.7 && <5
+      aeson
+    , base >=4.7 && <5
+    , bytestring
+    , servant
   default-language: Haskell2010
 
 executable monadfs-client
@@ -44,8 +50,11 @@ executable monadfs-client
       client
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      aeson
+    , base >=4.7 && <5
+    , bytestring
     , monadfs
+    , servant
   default-language: Haskell2010
 
 executable monadfs-name-server
@@ -56,8 +65,11 @@ executable monadfs-name-server
       name-server
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      aeson
+    , base >=4.7 && <5
+    , bytestring
     , monadfs
+    , servant
   default-language: Haskell2010
 
 executable monadfs-storage-server
@@ -68,8 +80,11 @@ executable monadfs-storage-server
       storage-server
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      aeson
+    , base >=4.7 && <5
+    , bytestring
     , monadfs
+    , servant
   default-language: Haskell2010
 
 test-suite monadfs-test
@@ -81,6 +96,9 @@ test-suite monadfs-test
       test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      aeson
+    , base >=4.7 && <5
+    , bytestring
     , monadfs
+    , servant
   default-language: Haskell2010
