@@ -19,11 +19,22 @@ extra-source-files:
 # common to point users to the README.md file.
 description:         Please see the README on GitHub at <https://github.com/githubuser/monadfs#readme>
 
+ghc-options:
+- -Wall -fno-warn-type-defaults
+
 dependencies:
 - base >= 4.7 && < 5
-- servant
+- containers
 - aeson
 - bytestring
+- mtl
+- servant
+- servant-server
+- servant-client
+- haskeline == 0.8.*
+- parsec
+- process
+- http-client
 
 library:
   source-dirs: shared
