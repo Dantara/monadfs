@@ -31,6 +31,8 @@ library
       API.NameServer
       API.StorageServer
       Lib
+      System
+      System.FileTree
   other-modules:
       Paths_monadfs
   hs-source-dirs:

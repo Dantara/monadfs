@@ -1,16 +1,13 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DataKinds      #-}
+-- {-# LANGUAGE DeriveGeneric  #-}
 {-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeOperators  #-}
 
 module API.StorageServer where
 
-import API.NameServer (DirPath, DirStatus, FileStatus, SystemStatus)
-import Servant.API
-
--- Here we will define api for Storage Server
-
--- Here we will define api for Name Server
+import           API.Internals
+import           API.NameServer (DirPath, DirStatus, FileStatus, SystemStatus)
+import           Servant.API
 
 type StorageServerAPI =
   "init" :> Get '[JSON] SystemStatus
