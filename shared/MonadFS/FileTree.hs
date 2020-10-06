@@ -10,9 +10,10 @@ import qualified Data.Map.Strict   as Map
 import           GHC.Generics
 import           MonadFS.API.Types
 
-data FileTree a
-  = Dir (Map String (FileTree a))
-  | Files (Map String a)
+data FileTree a = FileTree {
+    directories :: Map String (FileTree a)
+  , files       :: Map String a
+  }
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 data FileNode = FileNode String [IP]
