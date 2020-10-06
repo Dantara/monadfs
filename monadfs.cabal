@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: e3039605025ab45c57856eac40a839a97154696f6c52a0e30fdd8b960fa7a319
+-- hash: 303a1fe93e807e8f9b148743a3e1766968841176a8abda737e76db939e29e039
 
 name:           monadfs
 version:        0.1.0.0
@@ -27,10 +27,12 @@ source-repository head
 
 library
   exposed-modules:
-      API
-      API.NameServer
-      API.StorageServer
-      Lib
+      MonadFS
+      MonadFS.API
+      MonadFS.API.NameServer
+      MonadFS.API.StorageServer
+      MonadFS.API.Types
+      MonadFS.FileTree
   other-modules:
       Paths_monadfs
   hs-source-dirs:

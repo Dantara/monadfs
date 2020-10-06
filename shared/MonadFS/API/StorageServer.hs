@@ -1,16 +1,11 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DataKinds      #-}
 {-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeOperators  #-}
 
-module API.StorageServer where
+module MonadFS.API.StorageServer where
 
-import API.NameServer (DirPath, DirStatus, FileStatus, SystemStatus)
-import Servant.API
-
--- Here we will define api for Storage Server
-
--- Here we will define api for Name Server
+import           MonadFS.API.Types
+import           Servant.API
 
 type StorageServerAPI =
   "init" :> Get '[JSON] SystemStatus
@@ -31,4 +26,3 @@ type DirAPI =
   "create" :> ReqBody '[JSON] DirPath :> Post '[JSON] DirStatus
     :<|> "delete" :> ReqBody '[JSON] DirPath :> Post '[JSON] DirStatus
 
-newtype StorageState = StorageState [String]
