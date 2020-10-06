@@ -15,7 +15,7 @@ import Servant.API
 type StorageServerAPI =
   "init" :> Get '[JSON] SystemStatus
     :<|> "tree" :> Get '[JSON] StorageState
-    :<|> "status" :> Get '[NoContent] ()
+    :<|> "status" :> Get '[JSON] SystemStatus
     :<|> "file" :> FileAPI
     :<|> "dir" :> DirAPI
 
