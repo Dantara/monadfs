@@ -35,6 +35,7 @@ dependencies:
 - parsec
 - process
 - http-client
+- text
 
 library:
   source-dirs: shared
