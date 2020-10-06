@@ -60,7 +60,8 @@ newtype DirPath = DirPath String
 
 
 newtype FileName = FileName String
-  deriving (Eq, Show, Generic, FromJSON, ToJSON)
+  deriving (Eq, Ord, Show, Generic, FromJSON,
+            ToJSON, FromJSONKey, ToJSONKey)
 
 
 newtype DirInfo = DirInfo [FileName]
