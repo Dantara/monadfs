@@ -6,9 +6,11 @@ import qualified Data.Map.Strict   as Map
 import           MonadFS.API.Types
 
 data FileTree a
-  = Dir (Map ByteString (FileTree a))
-  | File a
+  = Dir (Map String (FileTree a))
+  | Files (Map String a)
 
-data FileNode = FileNode ByteString [IP]
+data FileNode = FileNode String [IP]
 
 type VFS = FileTree FileNode
+
+type StorageTree = FileTree FileName

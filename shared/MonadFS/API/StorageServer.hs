@@ -5,11 +5,12 @@
 module MonadFS.API.StorageServer where
 
 import           MonadFS.API.Types
+import           MonadFS.FileTree
 import           Servant.API
 
 type StorageServerAPI =
   "init" :> Get '[JSON] SystemStatus
-    :<|> "tree" :> Get '[JSON] StorageState
+    :<|> "tree" :> Get '[JSON] StorageTree
     :<|> "status" :> Get '[JSON] SystemStatus
     :<|> "file" :> FileAPI
     :<|> "dir" :> DirAPI

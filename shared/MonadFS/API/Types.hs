@@ -32,8 +32,6 @@ newtype IPList = IPList [IP]
 data FileInfo = FileInfo Size [IP]
 
 newtype DirPath = DirPath String
-newtype FileName = FileName ByteString
+newtype FileName = FileName String
 
 newtype DirInfo = DirInfo [FileName]
-
-newtype StorageState = StorageState [String]
