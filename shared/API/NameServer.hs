@@ -1,5 +1,4 @@
 {-# LANGUAGE DataKinds      #-}
--- {-# LANGUAGE DeriveGeneric  #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE TypeOperators  #-}
 
@@ -22,39 +21,8 @@ type FileAPI = "create" :> ReqBody '[JSON] FilePath   :> Post '[JSON] FileStatus
           :<|> "copy"   :> ReqBody '[JSON] FilePath   :> Post '[JSON] FileStatus
           :<|> "move"   :> ReqBody '[JSON] FilePath   :> Post '[JSON] FileStatus
 
-type DirAPI = "create" :> ReqBody '[JSON] DirPath :> Post '[JSON] DirStatus
-         :<|> "delete" :> ReqBody '[JSON] DirPath :> Post '[JSON] DirStatus
-         :<|> "info" :> QueryParam "dir" DirPath :> Get '[JSON] DirInfo
+type DirAPI = "create" :> ReqBody '[JSON] DirPath  :> Post '[JSON] DirStatus
+         :<|> "delete" :> ReqBody '[JSON] DirPath  :> Post '[JSON] DirStatus
+         :<|> "info"   :> QueryParam "dir" DirPath :> Get '[JSON] DirInfo
          :<|> "exists" :> QueryParam "dir" DirPath :> Get '[JSON] DirStatus
 
-data FileStatus = FileSuccess | FileError FileError
-
-data FileError
-  = FileExists
-  | FileDoesNotExist
-  | IncorrectFilePath
-  | CustomFileError ByteString
-
-data DirStatus = DirSuccess | DirError DirError
-
-data DirError
-  = DirExists
-  | DirDoesNotExist
-  | IncorrectDirPath
-  | CustomDirError ByteString
-
-newtype SystemStatus = SystemStatus Size
-
-newtype Size = Size Integer
-
-newtype IP = IP ByteString
-newtype IPList = IPList [IP]
-
-newtype ServerName = ServerName ByteString
-
-data FileInfo = FileInfo Size [ServerName]
-
-newtype DirPath = DirPath String
-newtype FileName = FileName ByteString
-
-newtype DirInfo = DirInfo [FileName]
