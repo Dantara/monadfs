@@ -2,11 +2,11 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE TypeOperators  #-}
 
-module API.NameServer where
+module MonadFS.API.NameServer where
 
-import           API.Internals
 import           Data.Aeson
 import           Data.ByteString
+import           MonadFS.API.Types
 import           Servant.API
 
 type NameServerAPI = "init" :> Get '[JSON] SystemStatus

@@ -2,9 +2,9 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE TypeOperators  #-}
 
-module API.StorageServer where
+module MonadFS.API.StorageServer where
 
-import           API.Internals
+import           MonadFS.API.Types
 import           Servant.API
 
 type StorageServerAPI =

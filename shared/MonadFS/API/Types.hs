@@ -1,4 +1,4 @@
-module API.Internals where
+module MonadFS.API.Types where
 
 import           Data.ByteString
 
