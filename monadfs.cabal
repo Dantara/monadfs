@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: e3039605025ab45c57856eac40a839a97154696f6c52a0e30fdd8b960fa7a319
+-- hash: 704e2d08afd682e3c66cd28c5004580e9f15fe1a9579115fb5571f41679d4cdb
 
 name:           monadfs
 version:        0.1.0.0
@@ -44,9 +44,13 @@ library
     , bytestring
     , containers
 <<<<<<< HEAD
+<<<<<<< HEAD
     , directory-tree
 =======
 >>>>>>> Add dummy client and libraries to package
+=======
+    , exceptions
+>>>>>>> Refactor Client, introduce CLIClient compound monad
     , haskeline ==0.8.*
     , http-client
     , mtl
@@ -68,6 +72,8 @@ library
 executable monadfs-client
   main-is: Main.hs
   other-modules:
+      Client.Parse
+      Client.Types
       Paths_monadfs
   hs-source-dirs:
       client
@@ -78,9 +84,13 @@ executable monadfs-client
     , bytestring
     , containers
 <<<<<<< HEAD
+<<<<<<< HEAD
     , directory-tree
 =======
 >>>>>>> Add dummy client and libraries to package
+=======
+    , exceptions
+>>>>>>> Refactor Client, introduce CLIClient compound monad
     , haskeline ==0.8.*
     , http-client
     , monadfs
@@ -113,9 +123,13 @@ executable monadfs-name-server
     , bytestring
     , containers
 <<<<<<< HEAD
+<<<<<<< HEAD
     , directory-tree
 =======
 >>>>>>> Add dummy client and libraries to package
+=======
+    , exceptions
+>>>>>>> Refactor Client, introduce CLIClient compound monad
     , haskeline ==0.8.*
     , http-client
     , monadfs
@@ -148,9 +162,13 @@ executable monadfs-storage-server
     , bytestring
     , containers
 <<<<<<< HEAD
+<<<<<<< HEAD
     , directory-tree
 =======
 >>>>>>> Add dummy client and libraries to package
+=======
+    , exceptions
+>>>>>>> Refactor Client, introduce CLIClient compound monad
     , haskeline ==0.8.*
     , http-client
     , monadfs
@@ -184,9 +202,13 @@ test-suite monadfs-test
     , bytestring
     , containers
 <<<<<<< HEAD
+<<<<<<< HEAD
     , directory-tree
 =======
 >>>>>>> Add dummy client and libraries to package
+=======
+    , exceptions
+>>>>>>> Refactor Client, introduce CLIClient compound monad
     , haskeline ==0.8.*
     , http-client
     , monadfs
