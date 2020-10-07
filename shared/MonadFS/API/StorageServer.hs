@@ -9,9 +9,9 @@ import           MonadFS.FileTree
 import           Servant.API
 
 type StorageServerAPI =
-  "init" :> Get '[JSON] SystemStatus
+  "init" :> Get '[JSON] StorageServerStatus
     :<|> "tree" :> Get '[JSON] StorageTree
-    :<|> "status" :> Get '[JSON] SystemStatus
+    :<|> "status" :> Get '[JSON] StorageServerStatus
     :<|> "file" :> FileAPI
     :<|> "dir" :> DirAPI
 

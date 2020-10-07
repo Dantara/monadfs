@@ -35,23 +35,29 @@ data DirError
   | CustomDirError Text
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
+data StorageServerStatus
+  = StorageServerOk Size
+  | StorageServerError Text
+  deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
-newtype SystemStatus = SystemStatus Size
+data SystemStatus
+  = SystemOk Size
+  | SystemError SystemError
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 newtype Size = Size Integer
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 
-newtype IP = IP String
+data SystemError
+  = NoStorageServersAvaliable
+  deriving (Eq, Show, Generic, FromJSON, ToJSON)
+
+data ServerAddr = ServerAddr String Int
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 
-newtype IPList = IPList [IP]
-  deriving (Eq, Show, Generic, FromJSON, ToJSON)
-
-
-data FileInfo = FileInfo Size [IP]
+data FileInfo = FileInfo Size [ServerAddr]
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 

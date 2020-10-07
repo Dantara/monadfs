@@ -36,6 +36,7 @@ dependencies:
 - process
 - http-client
 - text
+- stm
 
 library:
   source-dirs: shared
