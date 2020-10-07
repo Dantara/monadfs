@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: c4babd622f5b28b4ddae15936f17f68f265b1c67f1431bfcf262affdc37ecadc
+-- hash: 41280dd75dc16203768f2d79f78a395f72190c62b7328e7ecdfb41594fe6f6e3
 
 name:           monadfs
 version:        0.1.0.0
@@ -54,6 +54,7 @@ library
     , servant-server
     , stm
     , text
+    , warp
   default-language: Haskell2010
 
 executable monadfs-client
@@ -80,6 +81,7 @@ executable monadfs-client
     , servant-server
     , stm
     , text
+    , warp
   default-language: Haskell2010
 
 executable monadfs-name-server
@@ -106,6 +108,7 @@ executable monadfs-name-server
     , servant-server
     , stm
     , text
+    , warp
   default-language: Haskell2010
 
 executable monadfs-storage-server
@@ -132,6 +135,7 @@ executable monadfs-storage-server
     , servant-server
     , stm
     , text
+    , warp
   default-language: Haskell2010
 
 test-suite monadfs-test
@@ -159,4 +163,5 @@ test-suite monadfs-test
     , servant-server
     , stm
     , text
+    , warp
   default-language: Haskell2010

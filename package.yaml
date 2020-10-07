@@ -38,6 +38,7 @@ dependencies:
 - text
 - stm
 - servant-multipart
+- warp
 
 library:
   source-dirs: shared

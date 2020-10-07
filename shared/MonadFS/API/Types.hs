@@ -5,8 +5,10 @@ module MonadFS.API.Types where
 
 import           Data.Aeson
 import           Data.ByteString
-import           Data.Text
+import           Data.Text       (Text)
+import qualified Data.Text       as T
 import           GHC.Generics
+import           Servant
 
 data FileStatus
   = FileSuccess
@@ -64,6 +66,12 @@ data FileInfo = FileInfo Size [ServerAddr]
 newtype DirPath = DirPath String
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
+
+instance FromHttpApiData DirPath where
+  parseUrlPiece t = Right $ DirPath $ T.unpack t
+
+instance ToHttpApiData DirPath where
+  toUrlPiece (DirPath s) = T.pack s
 
 newtype FileName = FileName String
   deriving (Eq, Ord, Show, Generic, FromJSON,
