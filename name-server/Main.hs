@@ -45,7 +45,7 @@ data AppState = AppState {
 data StorageServer = StorageServer {
     ssAddr :: ServerAddr
   , ssSize :: Size
-  }
+  } deriving (Eq, Ord)
 
 newtype RequestM a = RequestM { runRequestM :: ReaderT Manager IO a }
   deriving ( Functor
@@ -62,8 +62,6 @@ main = do
 nameServer :: AppM ()
 nameServer = undefined
 
-initVFS :: VFS
-initVFS = FileTree Map.empty Map.empty
 
 nameServerApi :: Proxy NameServerAPI
 nameServerApi = Proxy
@@ -148,3 +146,6 @@ lookupSSs addrs = mapM checkSS addrs
   where
     mbToBool (Just _) = True
     mbToBool Nothing  = False
+
+initVFS :: VFS
+initVFS = FileTree Map.empty Map.empty

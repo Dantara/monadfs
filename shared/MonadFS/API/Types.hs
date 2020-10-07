@@ -46,7 +46,7 @@ data SystemStatus
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 newtype Size = Size Integer
-  deriving (Eq, Show, Generic, FromJSON, ToJSON)
+  deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON)
 
 
 data SystemError
@@ -54,7 +54,7 @@ data SystemError
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 data ServerAddr = ServerAddr String Int
-  deriving (Eq, Show, Generic, FromJSON, ToJSON)
+  deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON)
 
 
 data FileInfo = FileInfo Size [ServerAddr]

@@ -7,6 +7,7 @@ module MonadFS.API.StorageServer where
 import           MonadFS.API.Types
 import           MonadFS.FileTree
 import           Servant.API
+import           Servant.Multipart
 
 type StorageServerAPI =
   "init" :> Get '[JSON] StorageServerStatus
@@ -17,8 +18,8 @@ type StorageServerAPI =
 
 type FileAPI =
   "create" :> ReqBody '[JSON] FilePath :> Post '[JSON] FileStatus
-    :<|> "read" :> ReqBody '[JSON] FilePath :> Post '[JSON] Raw
-    :<|> "write" :> ReqBody '[JSON] FilePath :> Post '[JSON] Raw
+    :<|> "read" :> Raw
+    :<|> "write" :> MultipartForm Tmp (MultipartData Tmp) :> Post '[JSON] FileStatus
     :<|> "delete" :> ReqBody '[JSON] FilePath :> Post '[JSON] FileStatus
     :<|> "copy" :> ReqBody '[JSON] FilePath :> Post '[JSON] FileStatus
     :<|> "move" :> ReqBody '[JSON] FilePath :> Post '[JSON] FileStatus

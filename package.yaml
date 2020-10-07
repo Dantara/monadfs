@@ -37,6 +37,7 @@ dependencies:
 - http-client
 - text
 - stm
+- servant-multipart
 
 library:
   source-dirs: shared
