@@ -5,8 +5,10 @@ module MonadFS.API.Types where
 
 import           Data.Aeson
 import           Data.ByteString
-import           Data.Text
+import           Data.Text       (Text)
+import qualified Data.Text       as T
 import           GHC.Generics
+import           Servant
 
 data FileStatus
   = FileSuccess
@@ -35,29 +37,41 @@ data DirError
   | CustomDirError Text
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
+data StorageServerStatus
+  = StorageServerOk Size
+  | StorageServerError Text
+  deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
-newtype SystemStatus = SystemStatus Size
+data SystemStatus
+  = SystemOk Size
+  | SystemError SystemError
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 newtype Size = Size Integer
+  deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON)
+
+
+data SystemError
+  = NoStorageServersAvaliable
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
-
-newtype IP = IP String
-  deriving (Eq, Show, Generic, FromJSON, ToJSON)
-
-
-newtype IPList = IPList [IP]
-  deriving (Eq, Show, Generic, FromJSON, ToJSON)
+data ServerAddr = ServerAddr String Int
+  deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON)
 
 
-data FileInfo = FileInfo Size [IP]
+data FileInfo = FileInfo Size [ServerAddr]
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 
 newtype DirPath = DirPath String
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
+
+instance FromHttpApiData DirPath where
+  parseUrlPiece t = Right $ DirPath $ T.unpack t
+
+instance ToHttpApiData DirPath where
+  toUrlPiece (DirPath s) = T.pack s
 
 newtype FileName = FileName String
   deriving (Eq, Ord, Show, Generic, FromJSON,
