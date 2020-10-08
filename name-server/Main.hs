@@ -162,7 +162,25 @@ fileWriteController :: NewFile -> AppM (FileStatus [ServerAddr])
 fileWriteController = newFileHelper
 
 fileDeleteController :: FilePath -> AppM (FileStatus ())
-fileDeleteController = undefined
+fileDeleteController path = do
+  mng <- asks globalManager
+  mTree <- asks fileTree
+  tree <- liftIO $ readTVarIO mTree
+
+  case deleteFileNode path tree of
+    Right (FileNode _ (FileInfo _ addrs), t) -> do
+      liftIO $ atomically $ writeTVar mTree t
+      runServerReqs mng addrs
+      pure $ FileOk ()
+
+    Left e ->
+      pure $ FileError e
+
+    where
+      runServerReqs mng addrs = liftIO
+        $ mapM_ (runClientM (fileDeleteClient path)
+                            . mkClientEnv mng
+                            . addrToBaseUrl) addrs
 
 fileInfoController :: FilePath -> AppM (FileStatus FileInfo)
 fileInfoController = undefined
@@ -188,6 +206,16 @@ dirExistsController = undefined
 
 
 -- | Clients
+
+initClient :: ClientM StorageServerStatus
+treeClient :: ClientM (FileTree FileName)
+statusClient :: ClientM StorageServerStatus
+fileCreateClient :: FilePath -> ClientM (FileStatus ())
+fileDeleteClient :: FilePath -> ClientM (FileStatus ())
+fileCopyClient :: FilePath -> ClientM (FileStatus ())
+fileMoveClient :: FilePath -> ClientM (FileStatus ())
+dirCreateClient :: DirPath -> ClientM (DirStatus ())
+dirDeleteClient :: DirPath -> ClientM (DirStatus ())
 
 
 initClient :<|> treeClient :<|> statusClient
@@ -332,3 +360,28 @@ findFileNode path tree
       fileName' = FileName name
       dirName' = DirName name
       dirs = directories tree
+
+
+deleteFileNode :: FilePath -> VFS -> Either FileError (FileNode, VFS)
+deleteFileNode path tree
+  | null path = Left IncorrectFilePath
+  | Map.member fileName' $ files tree = Left FileExists
+  | null tail' = maybe
+    (Left FileDoesNotExist)
+    (\x -> Right (x, tree { files = Map.delete fileName' fs }))
+    (Map.lookup fileName' fs)
+  | otherwise = case Map.lookup dirName' dirs of
+      Just subTree ->
+          either
+            Left
+            (\(n, t) -> Right (n, tree { directories = Map.update (\_ -> Just t) dirName' dirs }))
+            (deleteFileNode path subTree)
+      Nothing ->
+        Left IncorrectFilePath
+    where
+      name = takeWhile (== '/') path
+      tail' = dropWhile (== '/') path
+      fileName' = FileName name
+      dirName' = DirName name
+      dirs = directories tree
+      fs = files tree
