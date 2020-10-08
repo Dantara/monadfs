@@ -193,7 +193,39 @@ fileInfoController path = do
 
 
 fileCopyController :: FilePath -> AppM (FileStatus ())
-fileCopyController = undefined
+fileCopyController path = do
+  mng <- asks globalManager
+  n <- asks amountOfReplicas
+  servers <- asks avaliableSSs
+  mTree <- asks fileTree
+  tree <- liftIO $ readTVarIO mTree
+
+  addrs <- liftIO $ findNBestAddresses n servers
+
+  handleServersAmount (length addrs) n
+    $ either
+      (pure . FileError)
+
+      (\t -> updateTree mTree t >> runServerReqs mng addrs >> pure (FileOk ()))
+
+      (deleteFileNode path tree
+       >>= (\(FileNode _ (FileInfo s _), tree') ->
+              addFileToTree (NewFile path s) addrs tree'))
+
+    where
+      runServerReqs mng addrs = liftIO
+        $ mapM_ (runClientM (fileMoveClient path)
+                            . mkClientEnv mng
+                            . addrToBaseUrl) addrs
+
+      updateTree mT t = liftIO $ atomically $ writeTVar mT t
+
+      handleServersAmount servers replicas f
+        | servers < replicas = pure
+          $ FileError
+          $ SystemFileError
+          $ CustomSystemError "System does not have enought storage servers"
+        | otherwise = f
 
 fileMoveController :: FilePath -> AppM (FileStatus ())
 fileMoveController = undefined
@@ -244,10 +276,7 @@ newFileHelper newF@(NewFile path _) = do
 
   excludeNotAvaliableSSs
 
-  addrs <- liftIO $ take n
-                    . map (\(StorageServer x _) -> x)
-                    . sortBy (\(StorageServer _ l) (StorageServer _ r) -> compare r l)
-                    <$> readTVarIO servers
+  addrs <- liftIO $ findNBestAddresses n servers
 
   handleServersAmount (length addrs) n
     $ either
@@ -280,6 +309,12 @@ excludeNotAvaliableSSs = do
   ssAvbl' <- liftIO $ proceedRequestM mng $ lookupSSs ssList
   liftIO $ atomically $ writeTVar ssAvbl ssAvbl'
 
+
+findNBestAddresses :: Int -> TVar [StorageServer] -> IO [ServerAddr]
+findNBestAddresses n servers = take n
+                    . map (\(StorageServer x _) -> x)
+                    . sortBy (\(StorageServer _ l) (StorageServer _ r) -> compare r l)
+                    <$> readTVarIO servers
 
 -- | Client Requests
 
