@@ -60,6 +60,9 @@ newtype RequestM a = RequestM { runRequestM :: ReaderT Manager IO a }
            , MonadIO
            )
 
+proceedRequestM :: Manager -> RequestM a -> IO a
+proceedRequestM mng req = runReaderT (runRequestM req) mng
+
 
 initState :: IO AppState
 initState = do
@@ -130,40 +133,11 @@ initController = do
 
 fileCreateController :: FilePath -> AppM (FileStatus ())
 fileCreateController path = do
-  mng <- asks globalManager
-  n <- asks amountOfReplicas
-  servers <- asks avaliableSSs
-  mTree <- asks fileTree
-  tree <- liftIO $ readTVarIO mTree
+  status <- newFileHelper (NewFile path (Size 0))
 
-  excludeNotAvaliableSSs
-
-  addrs <- liftIO $ take n
-                    . map (\(StorageServer x _) -> x)
-                    . sortBy (\(StorageServer _ l) (StorageServer _ r) -> compare r l)
-                    <$> readTVarIO servers
-
-  handleServersAmount (length addrs) n
-    $ either
-      (pure . FileError)
-      (\t -> updateTree mTree t >> runServerReqs mng addrs >> pure (FileOk ()))
-      (addFileToTree path addrs tree)
-
-    where
-      runServerReqs mng addrs = liftIO
-        $ mapM_ (runClientM (fileCreateClient path)
-                            . mkClientEnv mng
-                            . addrToBaseUrl) addrs
-
-      updateTree mT t = liftIO $ atomically $ writeTVar mT t
-
-      handleServersAmount servers replicas f
-        | servers < replicas = pure
-          $ FileError
-          $ SystemFileError
-          $ CustomSystemError "System does not have enought storage servers"
-        | otherwise = f
-
+  pure $ case status of
+           (FileOk _)    -> FileOk ()
+           (FileError e) -> FileError e
 
 
 
@@ -185,7 +159,7 @@ fileReadController path = do
       pure $ FileError e
 
 fileWriteController :: NewFile -> AppM (FileStatus [ServerAddr])
-fileWriteController = undefined
+fileWriteController = newFileHelper
 
 fileDeleteController :: FilePath -> AppM (FileStatus ())
 fileDeleteController = undefined
@@ -212,14 +186,68 @@ dirInfoController = undefined
 dirExistsController :: DirPath -> AppM (DirStatus ())
 dirExistsController = undefined
 
+
 -- | Clients
+
 
 initClient :<|> treeClient :<|> statusClient
   :<|> (fileCreateClient :<|> fileReadClient :<|> fileWriteFile
        :<|> fileDeleteClient :<|> fileCopyClient :<|> fileMoveClient)
   :<|> (dirCreateClient :<|> dirDeleteClient) = client storageServerApi
 
--- | Helpers
+
+-- | Controller Helpers
+
+
+newFileHelper :: NewFile -> AppM (FileStatus [ServerAddr])
+newFileHelper newF@(NewFile path _) = do
+  mng <- asks globalManager
+  n <- asks amountOfReplicas
+  servers <- asks avaliableSSs
+  mTree <- asks fileTree
+  tree <- liftIO $ readTVarIO mTree
+
+  excludeNotAvaliableSSs
+
+  addrs <- liftIO $ take n
+                    . map (\(StorageServer x _) -> x)
+                    . sortBy (\(StorageServer _ l) (StorageServer _ r) -> compare r l)
+                    <$> readTVarIO servers
+
+  handleServersAmount (length addrs) n
+    $ either
+      (pure . FileError)
+      (\t -> updateTree mTree t >> runServerReqs mng addrs >> pure (FileOk addrs))
+      (addFileToTree newF addrs tree)
+
+    where
+      runServerReqs mng addrs = liftIO
+        $ mapM_ (runClientM (fileCreateClient path)
+                            . mkClientEnv mng
+                            . addrToBaseUrl) addrs
+
+      updateTree mT t = liftIO $ atomically $ writeTVar mT t
+
+      handleServersAmount servers replicas f
+        | servers < replicas = pure
+          $ FileError
+          $ SystemFileError
+          $ CustomSystemError "System does not have enought storage servers"
+        | otherwise = f
+
+
+excludeNotAvaliableSSs :: AppM ()
+excludeNotAvaliableSSs = do
+  ssAvbl <- asks avaliableSSs
+  ssList <- fmap ssAddr <$> liftIO (readTVarIO ssAvbl)
+  mng <- asks globalManager
+
+  ssAvbl' <- liftIO $ proceedRequestM mng $ lookupSSs ssList
+  liftIO $ atomically $ writeTVar ssAvbl ssAvbl'
+
+
+-- | Client Requests
+
 
 checkSS :: ServerAddr -> RequestM (Maybe StorageServer)
 checkSS addr = do
@@ -240,18 +268,6 @@ lookupSSs addrs = mapM checkSS addrs
   >>= (pure . map (\(Just x) -> x) . filter isJust)
 
 
-excludeNotAvaliableSSs :: AppM ()
-excludeNotAvaliableSSs = do
-  ssAvbl <- asks avaliableSSs
-  ssList <- fmap ssAddr <$> liftIO (readTVarIO ssAvbl)
-  mng <- asks globalManager
-
-  ssAvbl' <- liftIO $ proceedRequestM mng $ lookupSSs ssList
-  liftIO $ atomically $ writeTVar ssAvbl ssAvbl'
-
-initVFS :: VFS
-initVFS = FileTree Map.empty Map.empty
-
 initializeSSs :: [ServerAddr] -> RequestM ()
 initializeSSs = mapM_ initSS
   where
@@ -263,14 +279,18 @@ initializeSSs = mapM_ initSS
         $ addrToBaseUrl addr
 
 
+
+-- | Pure business logic
+
+
+initVFS :: VFS
+initVFS = FileTree Map.empty Map.empty
+
 addrToBaseUrl :: ServerAddr -> BaseUrl
 addrToBaseUrl (ServerAddr url port) = BaseUrl Http url port ""
 
-proceedRequestM :: Manager -> RequestM a -> IO a
-proceedRequestM mng req = runReaderT (runRequestM req) mng
-
-addFileToTree :: FilePath -> [ServerAddr] -> VFS -> Either FileError VFS
-addFileToTree path addrs tree
+addFileToTree :: NewFile -> [ServerAddr] -> VFS -> Either FileError VFS
+addFileToTree (NewFile path size) addrs tree
   | null path = Left IncorrectFilePath
   | null name = Left $ CustomFileError "Empty file name"
   | Map.member fileName' $ files tree = Left FileExists
@@ -281,7 +301,7 @@ addFileToTree path addrs tree
           either
             Left
             (\t -> Right $ tree { directories = Map.update (\_ -> Just t) dirName' dirs })
-            (addFileToTree tail' addrs subTree)
+            (addFileToTree (NewFile tail' size) addrs subTree)
       Nothing ->
         Left IncorrectFilePath
     where
@@ -289,7 +309,7 @@ addFileToTree path addrs tree
       tail' = dropWhile (== '/') path
       fileName' = FileName name
       dirName' = DirName name
-      fileNode' = FileNode (FileName name) (FileInfo (Size 0) addrs)
+      fileNode' = FileNode (FileName name) (FileInfo size addrs)
       dirs = directories tree
 
 
