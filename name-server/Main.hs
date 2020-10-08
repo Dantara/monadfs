@@ -183,7 +183,14 @@ fileDeleteController path = do
                             . addrToBaseUrl) addrs
 
 fileInfoController :: FilePath -> AppM (FileStatus FileInfo)
-fileInfoController = undefined
+fileInfoController path = do
+  mTree <- asks fileTree
+  tree <- liftIO $ readTVarIO mTree
+
+  pure
+    $ either FileError (FileOk . fileInfo)
+    $ findFileNode path tree
+
 
 fileCopyController :: FilePath -> AppM (FileStatus ())
 fileCopyController = undefined
