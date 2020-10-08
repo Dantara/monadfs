@@ -138,16 +138,15 @@ fileCreateController path = do
 
   excludeNotAvaliableSSs
 
-  addrs <- liftIO $ (take n
-                     . map (\(StorageServer x _) -> x)
-                     . reverse
-                     . sortBy (\(StorageServer _ l) (StorageServer _ r) -> compare l r)
-                    ) <$> (readTVarIO servers)
+  addrs <- liftIO $ take n
+                    . map (\(StorageServer x _) -> x)
+                    . sortBy (\(StorageServer _ l) (StorageServer _ r) -> compare r l)
+                    <$> readTVarIO servers
 
   handleServersAmount (length addrs) n
     $ either
-      (\e -> pure $ FileError e)
-      (\t -> updateTree mTree t >> runServerReqs mng addrs >> (pure $ FileOk ()))
+      (pure . FileError)
+      (\t -> updateTree mTree t >> runServerReqs mng addrs >> pure (FileOk ()))
       (addFileToTree path addrs tree)
 
     where
@@ -169,7 +168,21 @@ fileCreateController path = do
 
 
 fileReadController :: FilePath -> AppM (FileStatus ServerAddr)
-fileReadController = undefined
+fileReadController path = do
+  mng <- asks globalManager
+  mTree <- asks fileTree
+  tree <- liftIO $ readTVarIO mTree
+
+  case findFileNode path tree of
+    Right (FileNode _ (FileInfo _ servers)) -> do
+      addrs <- liftIO $ fmap ssAddr
+               <$> proceedRequestM mng (lookupSSs servers)
+
+      pure $ if null addrs then FileError $ SystemFileError NoStorageServersAvaliable
+                           else FileOk $ head addrs
+
+    Left e ->
+      pure $ FileError e
 
 fileWriteController :: NewFile -> AppM (FileStatus [ServerAddr])
 fileWriteController = undefined
@@ -230,7 +243,7 @@ lookupSSs addrs = mapM checkSS addrs
 excludeNotAvaliableSSs :: AppM ()
 excludeNotAvaliableSSs = do
   ssAvbl <- asks avaliableSSs
-  ssList <- (fmap ssAddr) <$> (liftIO $ readTVarIO ssAvbl)
+  ssList <- fmap ssAddr <$> liftIO (readTVarIO ssAvbl)
   mng <- asks globalManager
 
   ssAvbl' <- liftIO $ proceedRequestM mng $ lookupSSs ssList
@@ -258,15 +271,15 @@ proceedRequestM mng req = runReaderT (runRequestM req) mng
 
 addFileToTree :: FilePath -> [ServerAddr] -> VFS -> Either FileError VFS
 addFileToTree path addrs tree
-  | path == "" = Left IncorrectFilePath
-  | name == "" = Left $ CustomFileError "Empty file name"
+  | null path = Left IncorrectFilePath
+  | null name = Left $ CustomFileError "Empty file name"
   | Map.member fileName' $ files tree = Left FileExists
   | null tail' = Right
     $ tree { files = Map.insert fileName' fileNode' (files tree) }
   | otherwise = case Map.lookup dirName' dirs of
       Just subTree ->
           either
-            (\x -> Left x)
+            Left
             (\t -> Right $ tree { directories = Map.update (\_ -> Just t) dirName' dirs })
             (addFileToTree tail' addrs subTree)
       Nothing ->
@@ -277,4 +290,25 @@ addFileToTree path addrs tree
       fileName' = FileName name
       dirName' = DirName name
       fileNode' = FileNode (FileName name) (FileInfo (Size 0) addrs)
+      dirs = directories tree
+
+
+findFileNode :: FilePath -> VFS -> Either FileError FileNode
+findFileNode path tree
+  | null path = Left IncorrectFilePath
+  | null name = Left $ CustomFileError "Empty file name"
+  | null tail' = maybe
+    (Left FileDoesNotExist)
+    Right
+    (Map.lookup fileName' (files tree))
+  | null dirs = Left FileDoesNotExist
+  | otherwise = maybe
+    (Left IncorrectFilePath)
+    (findFileNode tail')
+    (Map.lookup dirName' dirs)
+    where
+      name = takeWhile (== '/') path
+      tail' = dropWhile (== '/') path
+      fileName' = FileName name
+      dirName' = DirName name
       dirs = directories tree
