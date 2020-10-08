@@ -128,7 +128,7 @@ initController = do
       pure $ SystemOk $ Size $ totalSize `div` fromIntegral rs
 
 
-fileCreateController :: FilePath -> AppM FileStatus
+fileCreateController :: FilePath -> AppM (FileStatus ())
 fileCreateController path = do
   mng <- asks globalManager
   n <- asks amountOfReplicas
@@ -147,7 +147,7 @@ fileCreateController path = do
   handleServersAmount (length addrs) n
     $ either
       (\e -> pure $ FileError e)
-      (\t -> updateTree mTree t >> runServerReqs mng addrs >> pure FileSuccess)
+      (\t -> updateTree mTree t >> runServerReqs mng addrs >> (pure $ FileOk ()))
       (addFileToTree path addrs tree)
 
     where
@@ -161,41 +161,42 @@ fileCreateController path = do
       handleServersAmount servers replicas f
         | servers < replicas = pure
           $ FileError
-          $ CustomFileError "System does not have enought storage servers"
+          $ SystemFileError
+          $ CustomSystemError "System does not have enought storage servers"
         | otherwise = f
 
 
 
 
-fileReadController :: FilePath -> AppM ServerAddr
+fileReadController :: FilePath -> AppM (FileStatus ServerAddr)
 fileReadController = undefined
 
-fileWriteController :: FilePath -> AppM [ServerAddr]
+fileWriteController :: NewFile -> AppM (FileStatus [ServerAddr])
 fileWriteController = undefined
 
-fileDeleteController :: FilePath -> AppM FileStatus
+fileDeleteController :: FilePath -> AppM (FileStatus ())
 fileDeleteController = undefined
 
-fileInfoController :: FilePath -> AppM FileInfo
+fileInfoController :: FilePath -> AppM (FileStatus FileInfo)
 fileInfoController = undefined
 
-fileCopyController :: FilePath -> AppM FileStatus
+fileCopyController :: FilePath -> AppM (FileStatus ())
 fileCopyController = undefined
 
-fileMoveController :: FilePath -> AppM FileStatus
+fileMoveController :: FilePath -> AppM (FileStatus ())
 fileMoveController = undefined
 
 
-dirCreateController :: DirPath -> AppM DirStatus
+dirCreateController :: DirPath -> AppM (DirStatus ())
 dirCreateController = undefined
 
-dirDeleteController :: DirPath -> AppM DirStatus
+dirDeleteController :: DirPath -> AppM (DirStatus ())
 dirDeleteController = undefined
 
-dirInfoController :: DirPath -> AppM DirInfo
+dirInfoController :: DirPath -> AppM (DirStatus DirInfo)
 dirInfoController = undefined
 
-dirExistsController :: DirPath -> AppM DirStatus
+dirExistsController :: DirPath -> AppM (DirStatus ())
 dirExistsController = undefined
 
 -- | Clients

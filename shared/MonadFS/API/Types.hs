@@ -10,8 +10,8 @@ import qualified Data.Text       as T
 import           GHC.Generics
 import           Servant
 
-data FileStatus
-  = FileSuccess
+data FileStatus a
+  = FileOk a
   | FileError FileError
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
@@ -20,12 +20,13 @@ data FileError
   = FileExists
   | FileDoesNotExist
   | IncorrectFilePath
+  | SystemFileError SystemError
   | CustomFileError Text
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 
-data DirStatus
-  = DirSuccess
+data DirStatus a
+  = DirOk a
   | DirError DirError
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
@@ -34,6 +35,7 @@ data DirError
   = DirExists
   | DirDoesNotExist
   | IncorrectDirPath
+  | SystemDirError SystemError
   | CustomDirError Text
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
@@ -53,6 +55,7 @@ newtype Size = Size Integer
 
 data SystemError
   = NoStorageServersAvaliable
+  | CustomSystemError Text
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 data ServerAddr = ServerAddr String Int
@@ -79,4 +82,7 @@ newtype FileName = FileName String
 
 
 newtype DirInfo = DirInfo [FileName]
+  deriving (Eq, Show, Generic, FromJSON, ToJSON)
+
+data NewFile = NewFile FilePath Size
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
