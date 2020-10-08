@@ -1,12 +1,12 @@
 module Main where
 
-import qualified Data.Map.Strict           as Map (empty)
-import           MonadFS.API.StorageServer (StorageServerAPI)
-import           MonadFS.API.Types
-import           MonadFS.FileTree          (FileTree (FileTree))
-import           Network.Wai.Handler.Warp  (run)
-import           Servant
-import           Servant.Multipart         (MultipartData, Tmp)
+import qualified Data.Map.Strict as Map (empty)
+import MonadFS.API.StorageServer (StorageServerAPI)
+import MonadFS.API.Types
+import MonadFS.FileTree (FileTree (FileTree))
+import Network.Wai.Handler.Warp (run)
+import Servant
+import Servant.Multipart (MultipartData, Tmp)
 
 storageServerPort :: Int
 storageServerPort = 4000
