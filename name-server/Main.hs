@@ -298,7 +298,26 @@ dirCreateController path = do
 
 
 dirDeleteController :: DirPath -> AppM (DirStatus ())
-dirDeleteController = undefined
+dirDeleteController path = do
+  mng <- asks globalManager
+  mTree <- asks fileTree
+  tree <- liftIO $ readTVarIO mTree
+
+  case deleteDir path tree of
+    Right (addrs, t) -> do
+      liftIO $ atomically $ writeTVar mTree t
+      runServerReqs mng addrs
+      pure $ DirOk ()
+
+    Left e ->
+      pure $ DirError e
+
+    where
+      runServerReqs mng addrs = liftIO
+        $ mapM_ (runClientM (dirDeleteClient path)
+                            . mkClientEnv mng
+                            . addrToBaseUrl) addrs
+
 
 dirInfoController :: DirPath -> AppM (DirStatus DirInfo)
 dirInfoController = undefined
@@ -496,9 +515,10 @@ deleteFileNode path tree
       dirs = directories tree
       fs = files tree
 
+
 createDir :: DirPath -> VFS -> Either DirError VFS
 createDir (DirPath ('/':xs)) tree = createDir (DirPath xs) tree
-createDir path tree
+createDir (DirPath path) tree
   | null path = Left IncorrectDirPath
   | null tail' || tail' == "/" =
     case (Map.lookup dirName' dirs, Map.lookup fileName' fs) of
@@ -513,7 +533,7 @@ createDir path tree
           either
             Left
             (\t -> Right $ tree { directories = Map.update (\_ -> Just t) dirName' dirs })
-            (createDir path subTree)
+            (createDir (DirPath tail') subTree)
       Nothing ->
         Left IncorrectDirPath
     where
@@ -523,3 +543,45 @@ createDir path tree
       dirName' = DirName name
       dirs = directories tree
       fs = files tree
+
+
+deleteDir :: DirPath -> VFS -> Either DirError ([ServerAddr], VFS)
+deleteDir (DirPath ('/':xs)) tree = deleteDir (DirPath xs) tree
+deleteDir (DirPath path) tree
+  | null path = Left IncorrectDirPath
+  | (null tail' || tail' == "/") && Map.member dirName' dirs =
+        Right (addrs tree, tree { directories = Map.delete dirName' dirs })
+  | otherwise = case Map.lookup dirName' dirs of
+      Just subTree ->
+          either
+            Left
+            (\(list, t) -> Right (list, tree {
+                             directories = Map.update (\_ -> Just t) dirName' dirs
+                                             }))
+            (deleteDir (DirPath tail') subTree)
+      Nothing ->
+        Left IncorrectDirPath
+    where
+      name = takeWhile (/= '/') path
+      tail' = dropWhile (/= '/') path
+      dirName' = DirName name
+      dirs = directories tree
+      addrs t = extractAddrsFromVFS t
+
+
+extractAddrsFromVFS :: VFS -> [ServerAddr]
+extractAddrsFromVFS tree = Set.toList $ go tree Set.empty
+  where
+    go :: VFS -> Set ServerAddr -> Set ServerAddr
+    go t s
+      | Map.null (directories t) =
+          s <> fromCurrentDir t
+      | otherwise =
+        s <> (mconcat $ Map.elems
+                      $ (`go` s) <$> directories t)
+          <> fromCurrentDir t
+    fromCurrentDir t =
+      Set.fromList
+      $ concat
+      $ (\(FileInfo _ xs) -> xs) . fileInfo
+      <$> Map.elems (files t)
