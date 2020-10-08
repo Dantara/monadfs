@@ -265,7 +265,37 @@ fileMoveController path = do
 
 
 dirCreateController :: DirPath -> AppM (DirStatus ())
-dirCreateController = undefined
+dirCreateController path = do
+  mng <- asks globalManager
+  n <- asks amountOfReplicas
+  servers <- asks avaliableSSs
+  mTree <- asks fileTree
+  tree <- liftIO $ readTVarIO mTree
+
+  excludeNotAvaliableSSs
+
+  addrs <- liftIO $ findNBestAddresses n servers
+
+  handleServersAmount (length addrs) n
+    $ either
+      (pure . DirError)
+      (\t -> updateTree mTree t >> runServerReqs mng addrs >> pure (DirOk ()))
+      (createDir path tree)
+    where
+      runServerReqs mng addrs = liftIO
+        $ mapM_ (runClientM (dirCreateClient path)
+                            . mkClientEnv mng
+                            . addrToBaseUrl) addrs
+
+      updateTree mT t = liftIO $ atomically $ writeTVar mT t
+
+      handleServersAmount servers replicas f
+        | servers < replicas = pure
+          $ DirError
+          $ SystemDirError
+          $ CustomSystemError "System does not have enought storage servers"
+        | otherwise = f
+
 
 dirDeleteController :: DirPath -> AppM (DirStatus ())
 dirDeleteController = undefined
@@ -349,6 +379,7 @@ findNBestAddresses n servers = take n
                     . sortBy (\(StorageServer _ l) (StorageServer _ r) -> compare r l)
                     <$> readTVarIO servers
 
+
 -- | Client Requests
 
 
@@ -392,7 +423,9 @@ initVFS = FileTree Map.empty Map.empty
 addrToBaseUrl :: ServerAddr -> BaseUrl
 addrToBaseUrl (ServerAddr url port) = BaseUrl Http url port ""
 
+-- Maybe FileNode?
 addFileToTree :: NewFile -> [ServerAddr] -> VFS -> Either FileError VFS
+addFileToTree (NewFile ('/':xs) s) addrs tree = addFileToTree (NewFile xs s) addrs tree
 addFileToTree (NewFile path size) addrs tree
   | null path = Left IncorrectFilePath
   | null name = Left $ CustomFileError "Empty file name"
@@ -408,8 +441,8 @@ addFileToTree (NewFile path size) addrs tree
       Nothing ->
         Left IncorrectFilePath
     where
-      name = takeWhile (== '/') path
-      tail' = dropWhile (== '/') path
+      name = takeWhile (/= '/') path
+      tail' = dropWhile (/= '/') path
       fileName' = FileName name
       dirName' = DirName name
       fileNode' = FileNode (FileName name) (FileInfo size addrs)
@@ -417,6 +450,7 @@ addFileToTree (NewFile path size) addrs tree
 
 
 findFileNode :: FilePath -> VFS -> Either FileError FileNode
+findFileNode ('/':xs) tree = findFileNode xs tree
 findFileNode path tree
   | null path = Left IncorrectFilePath
   | null name = Left $ CustomFileError "Empty file name"
@@ -430,14 +464,15 @@ findFileNode path tree
     (findFileNode tail')
     (Map.lookup dirName' dirs)
     where
-      name = takeWhile (== '/') path
-      tail' = dropWhile (== '/') path
+      name = takeWhile (/= '/') path
+      tail' = dropWhile (/= '/') path
       fileName' = FileName name
       dirName' = DirName name
       dirs = directories tree
 
 
 deleteFileNode :: FilePath -> VFS -> Either FileError (FileNode, VFS)
+deleteFileNode ('/':xs) tree = deleteFileNode xs tree
 deleteFileNode path tree
   | null path = Left IncorrectFilePath
   | Map.member fileName' $ files tree = Left FileExists
@@ -454,8 +489,36 @@ deleteFileNode path tree
       Nothing ->
         Left IncorrectFilePath
     where
-      name = takeWhile (== '/') path
-      tail' = dropWhile (== '/') path
+      name = takeWhile (/= '/') path
+      tail' = dropWhile (/= '/') path
+      fileName' = FileName name
+      dirName' = DirName name
+      dirs = directories tree
+      fs = files tree
+
+createDir :: DirPath -> VFS -> Either DirError VFS
+createDir (DirPath ('/':xs)) tree = createDir (DirPath xs) tree
+createDir path tree
+  | null path = Left IncorrectDirPath
+  | null tail' || tail' == "/" =
+    case (Map.lookup dirName' dirs, Map.lookup fileName' fs) of
+      (Nothing, Nothing) ->
+        Right $ tree { directories = Map.insert dirName' initVFS dirs }
+      (Just _, _) ->
+        Left DirExists
+      (Nothing, Just _) ->
+        Left $ CustomDirError "File with the same name already exists"
+  | otherwise = case Map.lookup dirName' dirs of
+      Just subTree ->
+          either
+            Left
+            (\t -> Right $ tree { directories = Map.update (\_ -> Just t) dirName' dirs })
+            (createDir path subTree)
+      Nothing ->
+        Left IncorrectDirPath
+    where
+      name = takeWhile (/= '/') path
+      tail' = dropWhile (/= '/') path
       fileName' = FileName name
       dirName' = DirName name
       dirs = directories tree
