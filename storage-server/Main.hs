@@ -48,7 +48,7 @@ fileCreateController :: String -> Handler (FileStatus ())
 fileCreateController _ = return (FileOk ())
 
 fileReadController :: Tagged Handler Application
-fileReadController = serveDirectoryWebApp "/var/www/html"
+fileReadController = serveDirectoryFileServer "/var/www/html"
 
 fileWriteController :: MultipartData Tmp -> Handler (FileStatus ())
 fileWriteController _ = return (FileOk ())
