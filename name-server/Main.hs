@@ -208,6 +208,42 @@ fileCopyController path = do
 
       (\t -> updateTree mTree t >> runServerReqs mng addrs >> pure (FileOk ()))
 
+      (findFileNode path tree
+       >>= (\(FileNode _ (FileInfo s _)) ->
+              addFileToTree (NewFile path s) addrs tree))
+
+    where
+      runServerReqs mng addrs = liftIO
+        $ mapM_ (runClientM (fileMoveClient path)
+                            . mkClientEnv mng
+                            . addrToBaseUrl) addrs
+
+      updateTree mT t = liftIO $ atomically $ writeTVar mT t
+
+      handleServersAmount servers replicas f
+        | servers < replicas = pure
+          $ FileError
+          $ SystemFileError
+          $ CustomSystemError "System does not have enought storage servers"
+        | otherwise = f
+
+
+fileMoveController :: FilePath -> AppM (FileStatus ())
+fileMoveController path = do
+  mng <- asks globalManager
+  n <- asks amountOfReplicas
+  servers <- asks avaliableSSs
+  mTree <- asks fileTree
+  tree <- liftIO $ readTVarIO mTree
+
+  addrs <- liftIO $ findNBestAddresses n servers
+
+  handleServersAmount (length addrs) n
+    $ either
+      (pure . FileError)
+
+      (\t -> updateTree mTree t >> runServerReqs mng addrs >> pure (FileOk ()))
+
       (deleteFileNode path tree
        >>= (\(FileNode _ (FileInfo s _), tree') ->
               addFileToTree (NewFile path s) addrs tree'))
@@ -226,9 +262,6 @@ fileCopyController path = do
           $ SystemFileError
           $ CustomSystemError "System does not have enought storage servers"
         | otherwise = f
-
-fileMoveController :: FilePath -> AppM (FileStatus ())
-fileMoveController = undefined
 
 
 dirCreateController :: DirPath -> AppM (DirStatus ())
