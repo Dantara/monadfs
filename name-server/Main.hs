@@ -320,7 +320,14 @@ dirDeleteController path = do
 
 
 dirInfoController :: DirPath -> AppM (DirStatus DirInfo)
-dirInfoController = undefined
+dirInfoController path = do
+  mTree <- asks fileTree
+  tree <- liftIO $ readTVarIO mTree
+
+  pure
+    $ either DirError DirOk
+    $ getDirInfo path tree
+
 
 dirExistsController :: DirPath -> AppM (DirStatus ())
 dirExistsController = undefined
@@ -560,7 +567,7 @@ deleteDir (DirPath path) tree
                                              }))
             (deleteDir (DirPath tail') subTree)
       Nothing ->
-        Left IncorrectDirPath
+        Left DirDoesNotExist
     where
       name = takeWhile (/= '/') path
       tail' = dropWhile (/= '/') path
@@ -585,3 +592,27 @@ extractAddrsFromVFS tree = Set.toList $ go tree Set.empty
       $ concat
       $ (\(FileInfo _ xs) -> xs) . fileInfo
       <$> Map.elems (files t)
+
+
+getDirInfo :: DirPath -> VFS -> Either DirError DirInfo
+getDirInfo path tree = DirInfo . Map.keys . files
+  <$> findDir path tree
+
+
+findDir :: DirPath -> VFS -> Either DirError VFS
+findDir (DirPath ('/':xs)) tree = findDir (DirPath xs) tree
+findDir (DirPath path) tree
+  | null path = Left IncorrectDirPath
+  | null tail' || tail' == "/" = maybe
+    (Left DirDoesNotExist)
+    Right
+    (Map.lookup dirName' dirs)
+  | otherwise = maybe
+    (Left IncorrectDirPath)
+    (findDir (DirPath tail'))
+    (Map.lookup dirName' dirs)
+    where
+      name = takeWhile (/= '/') path
+      tail' = dropWhile (/= '/') path
+      dirName' = DirName name
+      dirs = directories tree
