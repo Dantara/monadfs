@@ -330,7 +330,14 @@ dirInfoController path = do
 
 
 dirExistsController :: DirPath -> AppM (DirStatus ())
-dirExistsController = undefined
+dirExistsController path = do
+  mTree <- asks fileTree
+  tree <- liftIO $ readTVarIO mTree
+
+  pure
+    $ either DirError (const $ DirOk ())
+    $ getDirInfo path tree
+
 
 
 -- | Clients
