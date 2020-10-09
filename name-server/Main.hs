@@ -60,6 +60,9 @@ newtype RequestM a = RequestM { runRequestM :: ReaderT Manager IO a }
            , MonadIO
            )
 
+proceedRequestM :: Manager -> RequestM a -> IO a
+proceedRequestM mng req = runReaderT (runRequestM req) mng
+
 
 initState :: IO AppState
 initState = do
@@ -130,6 +133,139 @@ initController = do
 
 fileCreateController :: FilePath -> AppM (FileStatus ())
 fileCreateController path = do
+  status <- newFileHelper (NewFile path (Size 0))
+
+  pure $ case status of
+           (FileOk _)    -> FileOk ()
+           (FileError e) -> FileError e
+
+
+
+fileReadController :: FilePath -> AppM (FileStatus ServerAddr)
+fileReadController path = do
+  mng <- asks globalManager
+  mTree <- asks fileTree
+  tree <- liftIO $ readTVarIO mTree
+
+  case findFileNode path tree of
+    Right (FileNode _ (FileInfo _ servers)) -> do
+      addrs <- liftIO $ fmap ssAddr
+               <$> proceedRequestM mng (lookupSSs servers)
+
+      pure $ if null addrs then FileError $ SystemFileError NoStorageServersAvaliable
+                           else FileOk $ head addrs
+
+    Left e ->
+      pure $ FileError e
+
+fileWriteController :: NewFile -> AppM (FileStatus [ServerAddr])
+fileWriteController = newFileHelper
+
+fileDeleteController :: FilePath -> AppM (FileStatus ())
+fileDeleteController path = do
+  mng <- asks globalManager
+  mTree <- asks fileTree
+  tree <- liftIO $ readTVarIO mTree
+
+  case deleteFileNode path tree of
+    Right (FileNode _ (FileInfo _ addrs), t) -> do
+      liftIO $ atomically $ writeTVar mTree t
+      runServerReqs mng addrs
+      pure $ FileOk ()
+
+    Left e ->
+      pure $ FileError e
+
+    where
+      runServerReqs mng addrs = liftIO
+        $ mapM_ (runClientM (fileDeleteClient path)
+                            . mkClientEnv mng
+                            . addrToBaseUrl) addrs
+
+fileInfoController :: FilePath -> AppM (FileStatus FileInfo)
+fileInfoController path = do
+  mTree <- asks fileTree
+  tree <- liftIO $ readTVarIO mTree
+
+  pure
+    $ either FileError (FileOk . fileInfo)
+    $ findFileNode path tree
+
+
+fileCopyController :: FilePath -> AppM (FileStatus ())
+fileCopyController path = do
+  mng <- asks globalManager
+  n <- asks amountOfReplicas
+  servers <- asks avaliableSSs
+  mTree <- asks fileTree
+  tree <- liftIO $ readTVarIO mTree
+
+  addrs <- liftIO $ findNBestAddresses n servers
+
+  handleServersAmount (length addrs) n
+    $ either
+      (pure . FileError)
+
+      (\t -> updateTree mTree t >> runServerReqs mng addrs >> pure (FileOk ()))
+
+      (findFileNode path tree
+       >>= (\(FileNode _ (FileInfo s _)) ->
+              addFileToTree (NewFile path s) addrs tree))
+
+    where
+      runServerReqs mng addrs = liftIO
+        $ mapM_ (runClientM (fileMoveClient path)
+                            . mkClientEnv mng
+                            . addrToBaseUrl) addrs
+
+      updateTree mT t = liftIO $ atomically $ writeTVar mT t
+
+      handleServersAmount servers replicas f
+        | servers < replicas = pure
+          $ FileError
+          $ SystemFileError
+          $ CustomSystemError "System does not have enought storage servers"
+        | otherwise = f
+
+
+fileMoveController :: FilePath -> AppM (FileStatus ())
+fileMoveController path = do
+  mng <- asks globalManager
+  n <- asks amountOfReplicas
+  servers <- asks avaliableSSs
+  mTree <- asks fileTree
+  tree <- liftIO $ readTVarIO mTree
+
+  addrs <- liftIO $ findNBestAddresses n servers
+
+  handleServersAmount (length addrs) n
+    $ either
+      (pure . FileError)
+
+      (\t -> updateTree mTree t >> runServerReqs mng addrs >> pure (FileOk ()))
+
+      (deleteFileNode path tree
+       >>= (\(FileNode _ (FileInfo s _), tree') ->
+              addFileToTree (NewFile path s) addrs tree'))
+
+    where
+      runServerReqs mng addrs = liftIO
+        $ mapM_ (runClientM (fileMoveClient path)
+                            . mkClientEnv mng
+                            . addrToBaseUrl) addrs
+
+      updateTree mT t = liftIO $ atomically $ writeTVar mT t
+
+      handleServersAmount servers replicas f
+        | servers < replicas = pure
+          $ FileError
+          $ SystemFileError
+          $ CustomSystemError "System does not have enought storage servers"
+        | otherwise = f
+
+
+dirCreateController :: DirPath -> AppM (DirStatus ())
+dirCreateController path = do
   mng <- asks globalManager
   n <- asks amountOfReplicas
   servers <- asks avaliableSSs
@@ -138,17 +274,111 @@ fileCreateController path = do
 
   excludeNotAvaliableSSs
 
-  addrs <- liftIO $ (take n
-                     . map (\(StorageServer x _) -> x)
-                     . reverse
-                     . sortBy (\(StorageServer _ l) (StorageServer _ r) -> compare l r)
-                    ) <$> (readTVarIO servers)
+  addrs <- liftIO $ findNBestAddresses n servers
 
   handleServersAmount (length addrs) n
     $ either
-      (\e -> pure $ FileError e)
-      (\t -> updateTree mTree t >> runServerReqs mng addrs >> (pure $ FileOk ()))
-      (addFileToTree path addrs tree)
+      (pure . DirError)
+      (\t -> updateTree mTree t >> runServerReqs mng addrs >> pure (DirOk ()))
+      (createDir path tree)
+    where
+      runServerReqs mng addrs = liftIO
+        $ mapM_ (runClientM (dirCreateClient path)
+                            . mkClientEnv mng
+                            . addrToBaseUrl) addrs
+
+      updateTree mT t = liftIO $ atomically $ writeTVar mT t
+
+      handleServersAmount servers replicas f
+        | servers < replicas = pure
+          $ DirError
+          $ SystemDirError
+          $ CustomSystemError "System does not have enought storage servers"
+        | otherwise = f
+
+
+dirDeleteController :: DirPath -> AppM (DirStatus ())
+dirDeleteController path = do
+  mng <- asks globalManager
+  mTree <- asks fileTree
+  tree <- liftIO $ readTVarIO mTree
+
+  case deleteDir path tree of
+    Right (addrs, t) -> do
+      liftIO $ atomically $ writeTVar mTree t
+      runServerReqs mng addrs
+      pure $ DirOk ()
+
+    Left e ->
+      pure $ DirError e
+
+    where
+      runServerReqs mng addrs = liftIO
+        $ mapM_ (runClientM (dirDeleteClient path)
+                            . mkClientEnv mng
+                            . addrToBaseUrl) addrs
+
+
+dirInfoController :: DirPath -> AppM (DirStatus DirInfo)
+dirInfoController path = do
+  mTree <- asks fileTree
+  tree <- liftIO $ readTVarIO mTree
+
+  pure
+    $ either DirError DirOk
+    $ getDirInfo path tree
+
+
+dirExistsController :: DirPath -> AppM (DirStatus ())
+dirExistsController path = do
+  mTree <- asks fileTree
+  tree <- liftIO $ readTVarIO mTree
+
+  pure
+    $ either DirError (const $ DirOk ())
+    $ getDirInfo path tree
+
+
+-- | Clients
+
+
+initClient :: ClientM StorageServerStatus
+treeClient :: ClientM (FileTree FileName)
+statusClient :: ClientM StorageServerStatus
+fileCreateClient :: FilePath -> ClientM (FileStatus ())
+fileDeleteClient :: FilePath -> ClientM (FileStatus ())
+fileCopyClient :: FilePath -> ClientM (FileStatus ())
+fileMoveClient :: FilePath -> ClientM (FileStatus ())
+dirCreateClient :: DirPath -> ClientM (DirStatus ())
+dirDeleteClient :: DirPath -> ClientM (DirStatus ())
+
+
+initClient :<|> treeClient :<|> statusClient
+  :<|> (fileCreateClient :<|> fileReadClient :<|> fileWriteFile
+       :<|> fileDeleteClient :<|> fileCopyClient :<|> fileMoveClient)
+  :<|> (dirCreateClient :<|> dirDeleteClient) = client storageServerApi
+
+
+-- | Controller Helpers
+
+
+newFileHelper :: NewFile -> AppM (FileStatus [ServerAddr])
+newFileHelper newF@(NewFile path _) = do
+  mng <- asks globalManager
+  n <- asks amountOfReplicas
+  servers <- asks avaliableSSs
+  mTree <- asks fileTree
+  tree <- liftIO $ readTVarIO mTree
+
+  excludeNotAvaliableSSs
+
+  addrs <- liftIO $ findNBestAddresses n servers
+
+  handleServersAmount (length addrs) n
+    $ either
+      (pure . FileError)
+      (\t -> updateTree mTree t >> runServerReqs mng addrs >> pure (FileOk addrs))
+      (addFileToTree newF addrs tree)
 
     where
       runServerReqs mng addrs = liftIO
@@ -166,47 +396,25 @@ fileCreateController path = do
         | otherwise = f
 
 
+excludeNotAvaliableSSs :: AppM ()
+excludeNotAvaliableSSs = do
+  ssAvbl <- asks avaliableSSs
+  ssList <- fmap ssAddr <$> liftIO (readTVarIO ssAvbl)
+  mng <- asks globalManager
+
+  ssAvbl' <- liftIO $ proceedRequestM mng $ lookupSSs ssList
+  liftIO $ atomically $ writeTVar ssAvbl ssAvbl'
 
 
-fileReadController :: FilePath -> AppM (FileStatus ServerAddr)
-fileReadController = undefined
-
-fileWriteController :: NewFile -> AppM (FileStatus [ServerAddr])
-fileWriteController = undefined
-
-fileDeleteController :: FilePath -> AppM (FileStatus ())
-fileDeleteController = undefined
-
-fileInfoController :: FilePath -> AppM (FileStatus FileInfo)
-fileInfoController = undefined
-
-fileCopyController :: FilePath -> AppM (FileStatus ())
-fileCopyController = undefined
-
-fileMoveController :: FilePath -> AppM (FileStatus ())
-fileMoveController = undefined
+findNBestAddresses :: Int -> TVar [StorageServer] -> IO [ServerAddr]
+findNBestAddresses n servers = take n
+                    . map (\(StorageServer x _) -> x)
+                    . sortBy (\(StorageServer _ l) (StorageServer _ r) -> compare r l)
+                    <$> readTVarIO servers
 
 
-dirCreateController :: DirPath -> AppM (DirStatus ())
-dirCreateController = undefined
+-- | Client Requests
 
-dirDeleteController :: DirPath -> AppM (DirStatus ())
-dirDeleteController = undefined
-
-dirInfoController :: DirPath -> AppM (DirStatus DirInfo)
-dirInfoController = undefined
-
-dirExistsController :: DirPath -> AppM (DirStatus ())
-dirExistsController = undefined
-
--- | Clients
-
-initClient :<|> treeClient :<|> statusClient
-  :<|> (fileCreateClient :<|> fileReadClient :<|> fileWriteFile
-       :<|> fileDeleteClient :<|> fileCopyClient :<|> fileMoveClient)
-  :<|> (dirCreateClient :<|> dirDeleteClient) = client storageServerApi
-
--- | Helpers
 
 checkSS :: ServerAddr -> RequestM (Maybe StorageServer)
 checkSS addr = do
@@ -227,18 +435,6 @@ lookupSSs addrs = mapM checkSS addrs
   >>= (pure . map (\(Just x) -> x) . filter isJust)
 
 
-excludeNotAvaliableSSs :: AppM ()
-excludeNotAvaliableSSs = do
-  ssAvbl <- asks avaliableSSs
-  ssList <- (fmap ssAddr) <$> (liftIO $ readTVarIO ssAvbl)
-  mng <- asks globalManager
-
-  ssAvbl' <- liftIO $ proceedRequestM mng $ lookupSSs ssList
-  liftIO $ atomically $ writeTVar ssAvbl ssAvbl'
-
-initVFS :: VFS
-initVFS = FileTree Map.empty Map.empty
-
 initializeSSs :: [ServerAddr] -> RequestM ()
 initializeSSs = mapM_ initSS
   where
@@ -250,31 +446,179 @@ initializeSSs = mapM_ initSS
         $ addrToBaseUrl addr
 
 
+-- | Pure business logic
+
+
+initVFS :: VFS
+initVFS = FileTree Map.empty Map.empty
+
 addrToBaseUrl :: ServerAddr -> BaseUrl
 addrToBaseUrl (ServerAddr url port) = BaseUrl Http url port ""
 
-proceedRequestM :: Manager -> RequestM a -> IO a
-proceedRequestM mng req = runReaderT (runRequestM req) mng
-
-addFileToTree :: FilePath -> [ServerAddr] -> VFS -> Either FileError VFS
-addFileToTree path addrs tree
-  | path == "" = Left IncorrectFilePath
-  | name == "" = Left $ CustomFileError "Empty file name"
+-- Maybe FileNode?
+addFileToTree :: NewFile -> [ServerAddr] -> VFS -> Either FileError VFS
+addFileToTree (NewFile ('/':xs) s) addrs tree = addFileToTree (NewFile xs s) addrs tree
+addFileToTree (NewFile path size) addrs tree
+  | null path = Left IncorrectFilePath
+  | null name = Left $ CustomFileError "Empty file name"
   | Map.member fileName' $ files tree = Left FileExists
   | null tail' = Right
     $ tree { files = Map.insert fileName' fileNode' (files tree) }
   | otherwise = case Map.lookup dirName' dirs of
       Just subTree ->
           either
-            (\x -> Left x)
+            Left
             (\t -> Right $ tree { directories = Map.update (\_ -> Just t) dirName' dirs })
-            (addFileToTree tail' addrs subTree)
+            (addFileToTree (NewFile tail' size) addrs subTree)
       Nothing ->
         Left IncorrectFilePath
     where
-      name = takeWhile (== '/') path
-      tail' = dropWhile (== '/') path
+      name = takeWhile (/= '/') path
+      tail' = dropWhile (/= '/') path
       fileName' = FileName name
       dirName' = DirName name
-      fileNode' = FileNode (FileName name) (FileInfo (Size 0) addrs)
+      fileNode' = FileNode (FileName name) (FileInfo size addrs)
+      dirs = directories tree
+
+
+findFileNode :: FilePath -> VFS -> Either FileError FileNode
+findFileNode ('/':xs) tree = findFileNode xs tree
+findFileNode path tree
+  | null path = Left IncorrectFilePath
+  | null name = Left $ CustomFileError "Empty file name"
+  | null tail' = maybe
+    (Left FileDoesNotExist)
+    Right
+    (Map.lookup fileName' (files tree))
+  | null dirs = Left FileDoesNotExist
+  | otherwise = maybe
+    (Left IncorrectFilePath)
+    (findFileNode tail')
+    (Map.lookup dirName' dirs)
+    where
+      name = takeWhile (/= '/') path
+      tail' = dropWhile (/= '/') path
+      fileName' = FileName name
+      dirName' = DirName name
+      dirs = directories tree
+
+
+deleteFileNode :: FilePath -> VFS -> Either FileError (FileNode, VFS)
+deleteFileNode ('/':xs) tree = deleteFileNode xs tree
+deleteFileNode path tree
+  | null path = Left IncorrectFilePath
+  | Map.member fileName' $ files tree = Left FileExists
+  | null tail' = maybe
+    (Left FileDoesNotExist)
+    (\x -> Right (x, tree { files = Map.delete fileName' fs }))
+    (Map.lookup fileName' fs)
+  | otherwise = case Map.lookup dirName' dirs of
+      Just subTree ->
+          either
+            Left
+            (\(n, t) -> Right (n, tree { directories = Map.update (\_ -> Just t) dirName' dirs }))
+            (deleteFileNode path subTree)
+      Nothing ->
+        Left IncorrectFilePath
+    where
+      name = takeWhile (/= '/') path
+      tail' = dropWhile (/= '/') path
+      fileName' = FileName name
+      dirName' = DirName name
+      dirs = directories tree
+      fs = files tree
+
+
+createDir :: DirPath -> VFS -> Either DirError VFS
+createDir (DirPath ('/':xs)) tree = createDir (DirPath xs) tree
+createDir (DirPath path) tree
+  | null path = Left IncorrectDirPath
+  | null tail' || tail' == "/" =
+    case (Map.lookup dirName' dirs, Map.lookup fileName' fs) of
+      (Nothing, Nothing) ->
+        Right $ tree { directories = Map.insert dirName' initVFS dirs }
+      (Just _, _) ->
+        Left DirExists
+      (Nothing, Just _) ->
+        Left $ CustomDirError "File with the same name already exists"
+  | otherwise = case Map.lookup dirName' dirs of
+      Just subTree ->
+          either
+            Left
+            (\t -> Right $ tree { directories = Map.update (\_ -> Just t) dirName' dirs })
+            (createDir (DirPath tail') subTree)
+      Nothing ->
+        Left IncorrectDirPath
+    where
+      name = takeWhile (/= '/') path
+      tail' = dropWhile (/= '/') path
+      fileName' = FileName name
+      dirName' = DirName name
+      dirs = directories tree
+      fs = files tree
+
+
+deleteDir :: DirPath -> VFS -> Either DirError ([ServerAddr], VFS)
+deleteDir (DirPath ('/':xs)) tree = deleteDir (DirPath xs) tree
+deleteDir (DirPath path) tree
+  | null path = Left IncorrectDirPath
+  | (null tail' || tail' == "/") && Map.member dirName' dirs =
+        Right (addrs tree, tree { directories = Map.delete dirName' dirs })
+  | otherwise = case Map.lookup dirName' dirs of
+      Just subTree ->
+          either
+            Left
+            (\(list, t) -> Right (list, tree {
+                             directories = Map.update (\_ -> Just t) dirName' dirs
+                                             }))
+            (deleteDir (DirPath tail') subTree)
+      Nothing ->
+        Left DirDoesNotExist
+    where
+      name = takeWhile (/= '/') path
+      tail' = dropWhile (/= '/') path
+      dirName' = DirName name
+      dirs = directories tree
+      addrs t = extractAddrsFromVFS t
+
+
+extractAddrsFromVFS :: VFS -> [ServerAddr]
+extractAddrsFromVFS tree = Set.toList $ go tree Set.empty
+  where
+    go :: VFS -> Set ServerAddr -> Set ServerAddr
+    go t s
+      | Map.null (directories t) =
+          s <> fromCurrentDir t
+      | otherwise =
+        s <> (mconcat $ Map.elems
+                      $ (`go` s) <$> directories t)
+          <> fromCurrentDir t
+    fromCurrentDir t =
+      Set.fromList
+      $ concat
+      $ (\(FileInfo _ xs) -> xs) . fileInfo
+      <$> Map.elems (files t)
+
+
+getDirInfo :: DirPath -> VFS -> Either DirError DirInfo
+getDirInfo path tree = DirInfo . Map.keys . files
+  <$> findDir path tree
+
+
+findDir :: DirPath -> VFS -> Either DirError VFS
+findDir (DirPath ('/':xs)) tree = findDir (DirPath xs) tree
+findDir (DirPath path) tree
+  | null path = Left IncorrectDirPath
+  | null tail' || tail' == "/" = maybe
+    (Left DirDoesNotExist)
+    Right
+    (Map.lookup dirName' dirs)
+  | otherwise = maybe
+    (Left IncorrectDirPath)
+    (findDir (DirPath tail'))
+    (Map.lookup dirName' dirs)
+    where
+      name = takeWhile (/= '/') path
+      tail' = dropWhile (/= '/') path
+      dirName' = DirName name
       dirs = directories tree

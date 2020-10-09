@@ -23,6 +23,7 @@ type FileAPI =
     :<|> "delete" :> ReqBody '[JSON] FilePath :> Post '[JSON] (FileStatus ())
     :<|> "copy" :> ReqBody '[JSON] FilePath :> Post '[JSON] (FileStatus ())
     :<|> "move" :> ReqBody '[JSON] FilePath :> Post '[JSON] (FileStatus ())
+    :<|> "load" :> ReqBody '[JSON] LoadFile :> Post '[JSON] (FileStatus ())
 
 type DirAPI =
   "create" :> ReqBody '[JSON] DirPath :> Post '[JSON] (DirStatus ())
