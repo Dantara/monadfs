@@ -17,17 +17,6 @@ import System.Process (system)
 main :: IO ()
 main = run
 
-type MyAPI = "ip" :> Get '[PlainText] String
-
-api :: Proxy MyAPI
-api = Proxy
-
-getIP :: ClientM String
-getIP = client api
-
-myURL :: BaseUrl
-myURL = BaseUrl Http "ifconfig.me" 80 ""
-
 evalCommand :: InputCommand -> InputT (CLIClient Environment String) ()
 evalCommand ExitCmd = return ()
 evalCommand SkipCmd = return ()
@@ -35,8 +24,13 @@ evalCommand (EchoCmd str) = outputStrLn str
 evalCommand (CowSayCmd str) = void $ liftIO (system ("cowsay " ++ str))
 evalCommand MyIpCmd =
   lift ask
-    >>= (\(Environment mngr) -> liftIO (runClientM getIP (mkClientEnv mngr myURL)))
+    >>= (\(Environment mngr) -> liftIO (runClientM getIP (mkClientEnv mngr (BaseUrl Http "ifconfig.me" 80 ""))))
     >>= outputStrLn . show
+  where
+    api :: Proxy ("ip" :> Get '[PlainText] String)
+    api = Proxy
+    getIP :: ClientM String
+    getIP = client api
 evalCommand HelpCmd = outputStr helpList
 evalCommand _ = outputStrLn "Not implemented yet("
 
