@@ -92,3 +92,6 @@ data NewFile = NewFile FilePath Size
 data LoadFile = LoadFile FilePath ServerAddr
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
+
+data SourceDest = SourceDest FilePath FilePath
+  deriving (Eq, Show, Generic, FromJSON, ToJSON)

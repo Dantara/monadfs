@@ -17,8 +17,8 @@ type FileAPI = "create" :> ReqBody '[JSON] FilePath   :> Post '[JSON] (FileStatu
           :<|> "delete" :> ReqBody '[JSON] FilePath   :> Post '[JSON] (FileStatus ())
           :<|> "info"   :> QueryParam' '[Required] "file" FilePath
                :> Get '[JSON] (FileStatus FileInfo)
-          :<|> "copy"   :> ReqBody '[JSON] FilePath   :> Post '[JSON] (FileStatus ())
-          :<|> "move"   :> ReqBody '[JSON] FilePath   :> Post '[JSON] (FileStatus ())
+          :<|> "copy"   :> ReqBody '[JSON] SourceDest :> Post '[JSON] (FileStatus ())
+          :<|> "move"   :> ReqBody '[JSON] SourceDest :> Post '[JSON] (FileStatus ())
 
 type DirAPI = "create" :> ReqBody '[JSON] DirPath  :> Post '[JSON] (DirStatus ())
          :<|> "delete" :> ReqBody '[JSON] DirPath  :> Post '[JSON] (DirStatus ())

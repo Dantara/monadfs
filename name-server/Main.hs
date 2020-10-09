@@ -192,8 +192,8 @@ fileInfoController path = do
     $ findFileNode path tree
 
 
-fileCopyController :: FilePath -> AppM (FileStatus ())
-fileCopyController path = do
+fileCopyController :: SourceDest -> AppM (FileStatus ())
+fileCopyController sd@(SourceDest source dest) = do
   mng <- asks globalManager
   n <- asks amountOfReplicas
   servers <- asks avaliableSSs
@@ -208,13 +208,13 @@ fileCopyController path = do
 
       (\t -> updateTree mTree t >> runServerReqs mng addrs >> pure (FileOk ()))
 
-      (findFileNode path tree
+      (findFileNode source tree
        >>= (\(FileNode _ (FileInfo s _)) ->
-              addFileToTree (NewFile path s) addrs tree))
+              addFileToTree (NewFile dest s) addrs tree))
 
     where
       runServerReqs mng addrs = liftIO
-        $ mapM_ (runClientM (fileMoveClient path)
+        $ mapM_ (runClientM (fileMoveClient sd)
                             . mkClientEnv mng
                             . addrToBaseUrl) addrs
 
@@ -228,8 +228,8 @@ fileCopyController path = do
         | otherwise = f
 
 
-fileMoveController :: FilePath -> AppM (FileStatus ())
-fileMoveController path = do
+fileMoveController :: SourceDest -> AppM (FileStatus ())
+fileMoveController sd@(SourceDest source dest) = do
   mng <- asks globalManager
   n <- asks amountOfReplicas
   servers <- asks avaliableSSs
@@ -244,13 +244,13 @@ fileMoveController path = do
 
       (\t -> updateTree mTree t >> runServerReqs mng addrs >> pure (FileOk ()))
 
-      (deleteFileNode path tree
+      (deleteFileNode source tree
        >>= (\(FileNode _ (FileInfo s _), tree') ->
-              addFileToTree (NewFile path s) addrs tree'))
+              addFileToTree (NewFile dest s) addrs tree'))
 
     where
       runServerReqs mng addrs = liftIO
-        $ mapM_ (runClientM (fileMoveClient path)
+        $ mapM_ (runClientM (fileMoveClient sd)
                             . mkClientEnv mng
                             . addrToBaseUrl) addrs
 
@@ -347,15 +347,17 @@ treeClient :: ClientM (FileTree FileName)
 statusClient :: ClientM StorageServerStatus
 fileCreateClient :: FilePath -> ClientM (FileStatus ())
 fileDeleteClient :: FilePath -> ClientM (FileStatus ())
-fileCopyClient :: FilePath -> ClientM (FileStatus ())
-fileMoveClient :: FilePath -> ClientM (FileStatus ())
+fileCopyClient :: SourceDest -> ClientM (FileStatus ())
+fileMoveClient :: SourceDest -> ClientM (FileStatus ())
+fileLoadClient :: LoadFile -> ClientM (FileStatus ())
 dirCreateClient :: DirPath -> ClientM (DirStatus ())
 dirDeleteClient :: DirPath -> ClientM (DirStatus ())
 
 
 initClient :<|> treeClient :<|> statusClient
   :<|> (fileCreateClient :<|> fileReadClient :<|> fileWriteFile
-       :<|> fileDeleteClient :<|> fileCopyClient :<|> fileMoveClient)
+       :<|> fileDeleteClient :<|> fileCopyClient
+       :<|> fileMoveClient :<|> fileLoadClient)
   :<|> (dirCreateClient :<|> dirDeleteClient) = client storageServerApi
 
 
