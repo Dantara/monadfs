@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 9db51f02ed18df99bc5e1101dfa6b5774969b2bf0a2d9c5691c9bb217223f090
+-- hash: 78c7c48f84ff4737ec85fd17fdd57da88e2707274e49f0a2a87b1e01cd2ecb7f
 
 name:           monadfs
 version:        0.1.0.0
@@ -53,7 +53,7 @@ library
     , process
     , servant
     , servant-client
-    , servant-multipart
+    , servant-multipart ==0.11.6
     , servant-server
     , stm
     , text
@@ -83,7 +83,7 @@ executable monadfs-client
     , process
     , servant
     , servant-client
-    , servant-multipart
+    , servant-multipart ==0.11.6
     , servant-server
     , stm
     , text
@@ -113,7 +113,7 @@ executable monadfs-name-server
     , process
     , servant
     , servant-client
-    , servant-multipart
+    , servant-multipart ==0.11.6
     , servant-server
     , stm
     , text
@@ -143,7 +143,7 @@ executable monadfs-storage-server
     , process
     , servant
     , servant-client
-    , servant-multipart
+    , servant-multipart ==0.11.6
     , servant-server
     , stm
     , text
@@ -174,7 +174,7 @@ test-suite monadfs-test
     , process
     , servant
     , servant-client
-    , servant-multipart
+    , servant-multipart ==0.11.6
     , servant-server
     , stm
     , text

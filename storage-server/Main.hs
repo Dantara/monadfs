@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Main where
 
 import Control.Exception (catch)
@@ -13,6 +15,7 @@ import MonadFS.API.Types
 import MonadFS.FileTree (DirName (DirName), FileTree (FileTree))
 import Network.Wai.Handler.Warp (run)
 import Servant
+import Servant.Multipart
 import Servant.Multipart (MultipartData, Tmp)
 import System.Directory
 import System.Directory.Tree (AnchoredDirTree ((:/)), DirTree (Dir, Failed, File), build)
@@ -80,7 +83,11 @@ fileReadController :: Tagged Handler Application
 fileReadController = serveDirectoryFileServer baseLocalDir
 
 fileWriteController :: MultipartData Tmp -> Handler (FileStatus ())
-fileWriteController _ = return (FileOk ())
+fileWriteController query = case extractWriteData query of
+  (Left err) -> return (FileError (CustomFileError (T.pack err)))
+  (Right (filepath, filedata)) -> do
+    liftIO $ copyFile (baseLocalDir ++ fdPayload filedata) filepath
+    return (FileOk ())
 
 fileDeleteController :: String -> Handler (FileStatus ())
 fileDeleteController filepath =
@@ -99,15 +106,22 @@ fileLoadController _ = return (FileOk ())
 
 dirCreateController :: DirPath -> Handler (DirStatus ())
 dirCreateController (DirPath dirpath) =
-  liftIO (createDirectoryIfMissing True dirpath)
+  liftIO (createDirectoryIfMissing True (baseLocalDir ++ dirpath))
     >> return (DirOk ())
 
 dirDeleteController :: DirPath -> Handler (DirStatus ())
 dirDeleteController (DirPath dirpath) =
-  liftIO (removeDirectoryRecursive dirpath)
+  liftIO (removeDirectoryRecursive (baseLocalDir ++ dirpath))
     >> return (DirOk ())
 
 -- | Helpers
+
+-- | Extract useful data from Multipart
+extractWriteData :: MultipartData Tmp -> Either String (String, FileData Tmp)
+extractWriteData multidata = do
+  filepath <- lookupInput "filepath" multidata
+  filedata <- lookupFile "payload" multidata
+  return (T.unpack filepath, filedata)
 
 -- Wrap `IOException` into request return type
 exceptionWrapper :: IOError -> IO StorageServerStatus
