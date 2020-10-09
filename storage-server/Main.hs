@@ -1,12 +1,12 @@
 module Main where
 
-import qualified Data.Map.Strict as Map (empty)
-import MonadFS.API.StorageServer (StorageServerAPI)
-import MonadFS.API.Types
-import MonadFS.FileTree (FileTree (FileTree))
-import Network.Wai.Handler.Warp (run)
-import Servant
-import Servant.Multipart (MultipartData, Tmp)
+import qualified Data.Map.Strict           as Map (empty)
+import           MonadFS.API.StorageServer (StorageServerAPI)
+import           MonadFS.API.Types
+import           MonadFS.FileTree          (FileTree (FileTree))
+import           Network.Wai.Handler.Warp  (run)
+import           Servant
+import           Servant.Multipart         (MultipartData, Tmp)
 
 storageServerPort :: Int
 storageServerPort = 4000
@@ -25,6 +25,7 @@ storageServer =
              :<|> fileDeleteController
              :<|> fileCopyController
              :<|> fileMoveController
+             :<|> fileLoadController
          )
     :<|> ( dirCreateController :<|> dirDeleteController
          )
@@ -56,11 +57,14 @@ fileWriteController _ = return (FileOk ())
 fileDeleteController :: String -> Handler (FileStatus ())
 fileDeleteController _ = return (FileOk ())
 
-fileCopyController :: String -> Handler (FileStatus ())
+fileCopyController :: SourceDest -> Handler (FileStatus ())
 fileCopyController _ = return (FileOk ())
 
-fileMoveController :: String -> Handler (FileStatus ())
+fileMoveController :: SourceDest -> Handler (FileStatus ())
 fileMoveController _ = return (FileOk ())
+
+fileLoadController :: LoadFile -> Handler (FileStatus ())
+fileLoadController _ = return (FileOk ())
 
 dirCreateController :: DirPath -> Handler (DirStatus ())
 dirCreateController _ = return (DirOk ())

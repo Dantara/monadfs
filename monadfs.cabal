@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 41280dd75dc16203768f2d79f78a395f72190c62b7328e7ecdfb41594fe6f6e3
+-- hash: d90e64c30a70f0863349bddb4825ed05182c86528bbfa16fd01da3a360ee98cd
 
 name:           monadfs
 version:        0.1.0.0
@@ -43,6 +43,7 @@ library
     , base >=4.7 && <5
     , bytestring
     , containers
+    , directory-tree
     , haskeline ==0.8.*
     , http-client
     , mtl
@@ -69,6 +70,7 @@ executable monadfs-client
     , base >=4.7 && <5
     , bytestring
     , containers
+    , directory-tree
     , haskeline ==0.8.*
     , http-client
     , monadfs
@@ -96,6 +98,7 @@ executable monadfs-name-server
     , base >=4.7 && <5
     , bytestring
     , containers
+    , directory-tree
     , haskeline ==0.8.*
     , http-client
     , monadfs
@@ -123,6 +126,7 @@ executable monadfs-storage-server
     , base >=4.7 && <5
     , bytestring
     , containers
+    , directory-tree
     , haskeline ==0.8.*
     , http-client
     , monadfs
@@ -151,6 +155,7 @@ test-suite monadfs-test
     , base >=4.7 && <5
     , bytestring
     , containers
+    , directory-tree
     , haskeline ==0.8.*
     , http-client
     , monadfs

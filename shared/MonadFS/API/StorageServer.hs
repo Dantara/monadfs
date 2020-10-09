@@ -21,8 +21,8 @@ type FileAPI =
     :<|> "read" :> Raw
     :<|> "write" :> MultipartForm Tmp (MultipartData Tmp) :> Post '[JSON] (FileStatus ())
     :<|> "delete" :> ReqBody '[JSON] FilePath :> Post '[JSON] (FileStatus ())
-    :<|> "copy" :> ReqBody '[JSON] FilePath :> Post '[JSON] (FileStatus ())
-    :<|> "move" :> ReqBody '[JSON] FilePath :> Post '[JSON] (FileStatus ())
+    :<|> "copy" :> ReqBody '[JSON] SourceDest :> Post '[JSON] (FileStatus ())
+    :<|> "move" :> ReqBody '[JSON] SourceDest :> Post '[JSON] (FileStatus ())
     :<|> "load" :> ReqBody '[JSON] LoadFile :> Post '[JSON] (FileStatus ())
 
 type DirAPI =
