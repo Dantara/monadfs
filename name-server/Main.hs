@@ -339,8 +339,8 @@ dirExistsController path = do
     $ getDirInfo path tree
 
 
-
 -- | Clients
+
 
 initClient :: ClientM StorageServerStatus
 treeClient :: ClientM (FileTree FileName)
@@ -444,7 +444,6 @@ initializeSSs = mapM_ initSS
         $ runClientM initClient
         $ mkClientEnv mng
         $ addrToBaseUrl addr
-
 
 
 -- | Pure business logic

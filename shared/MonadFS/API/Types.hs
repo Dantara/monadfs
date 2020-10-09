@@ -91,3 +91,4 @@ data NewFile = NewFile FilePath Size
 
 data LoadFile = LoadFile FilePath ServerAddr
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
+
