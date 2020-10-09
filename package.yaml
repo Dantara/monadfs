@@ -39,7 +39,9 @@ dependencies:
 - stm
 - servant-multipart
 - warp
+- directory
 - directory-tree
+- disk-free-space
 
 library:
   source-dirs: shared

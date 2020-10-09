@@ -1,12 +1,25 @@
 module Main where
 
-import qualified Data.Map.Strict as Map (empty)
+import Control.Exception (catch)
+import Control.Monad
+import Control.Monad.IO.Class (liftIO)
+import Data.List (stripPrefix)
+import Data.Map.Strict (Map)
+import qualified Data.Map.Strict as Map
+import Data.Maybe (maybe)
+import qualified Data.Text as T
 import MonadFS.API.StorageServer (StorageServerAPI)
 import MonadFS.API.Types
-import MonadFS.FileTree (FileTree (FileTree))
+import MonadFS.FileTree (DirName (DirName), FileTree (FileTree))
 import Network.Wai.Handler.Warp (run)
 import Servant
 import Servant.Multipart (MultipartData, Tmp)
+import System.Directory
+import System.Directory.Tree (AnchoredDirTree ((:/)), DirTree (Dir, Failed, File), build)
+import System.DiskSpace (getAvailSpace)
+
+baseLocalDir :: FilePath
+baseLocalDir = "/monadfs/storage"
 
 storageServerPort :: Int
 storageServerPort = 4000
@@ -36,38 +49,95 @@ main = do
   run storageServerPort (serve storageServerApi storageServer)
 
 -- | Controllers
-initController :: Handler StorageServerStatus
-initController = return (StorageServerOk (Size 666))
 
+-- | Clean folder and recreate it, forwarding all exceptions into the
+-- request answer
+initController :: Handler StorageServerStatus
+initController = liftIO (initialize `catch` exceptionWrapper)
+  where
+    initialize :: IO StorageServerStatus
+    initialize = do
+      removeDirectoryRecursive baseLocalDir
+        `catch` (\e -> putStrLn ("Exception: " ++ show (e :: IOError)))
+      createDirectoryIfMissing True baseLocalDir
+      StorageServerOk . Size <$> liftIO (getAvailSpace baseLocalDir)
+
+-- | TODO: Add exception handling for edge cases
 treeController :: Handler (FileTree FileName)
-treeController = return (FileTree Map.empty Map.empty)
+treeController = liftIO (traverseDirectory baseLocalDir)
 
 statusController :: Handler StorageServerStatus
-statusController = return (StorageServerOk (Size 666))
+statusController =
+  StorageServerOk . Size
+    <$> liftIO (getAvailSpace baseLocalDir)
 
 fileCreateController :: String -> Handler (FileStatus ())
-fileCreateController _ = return (FileOk ())
+fileCreateController filepath =
+  liftIO (writeFile (baseLocalDir ++ filepath) "")
+    >> return (FileOk ())
 
 fileReadController :: Tagged Handler Application
-fileReadController = serveDirectoryFileServer "/var/www/html"
+fileReadController = serveDirectoryFileServer baseLocalDir
 
 fileWriteController :: MultipartData Tmp -> Handler (FileStatus ())
 fileWriteController _ = return (FileOk ())
 
 fileDeleteController :: String -> Handler (FileStatus ())
-fileDeleteController _ = return (FileOk ())
+fileDeleteController filepath =
+  liftIO (removeFile (baseLocalDir ++ filepath))
+    >> return (FileOk ())
 
+-- | TODO: implement
 fileCopyController :: SourceDest -> Handler (FileStatus ())
-fileCopyController _ = return (FileOk ())
+fileCopyController _ = throwError (ServerError 501 "Sorry, not yet(" mempty [])
 
 fileMoveController :: SourceDest -> Handler (FileStatus ())
-fileMoveController _ = return (FileOk ())
+fileMoveController _ = throwError (ServerError 501 "Sorry, not yet(" mempty [])
 
 fileLoadController :: LoadFile -> Handler (FileStatus ())
 fileLoadController _ = return (FileOk ())
 
 dirCreateController :: DirPath -> Handler (DirStatus ())
-dirCreateController _ = return (DirOk ())
+dirCreateController (DirPath dirpath) =
+  liftIO (createDirectoryIfMissing True dirpath)
+    >> return (DirOk ())
 
 dirDeleteController :: DirPath -> Handler (DirStatus ())
-dirDeleteController _ = return (DirOk ())
+dirDeleteController (DirPath dirpath) =
+  liftIO (removeDirectoryRecursive dirpath)
+    >> return (DirOk ())
+
+-- | Helpers
+
+-- Wrap `IOException` into request return type
+exceptionWrapper :: IOError -> IO StorageServerStatus
+exceptionWrapper e =
+  return $
+    StorageServerError $
+      T.pack ("Exception: " ++ show (e :: IOError))
+
+-- | 'dirPath' MUST be valid path to directory, **not** file
+traverseDirectory :: FilePath -> IO (FileTree FileName)
+traverseDirectory dirPath = do
+  anchoredTree <- build dirPath
+  let _ :/ tree = anchoredTree
+  return (dirTreeToFileTree tree)
+
+isDirectory :: DirTree a -> Bool
+isDirectory (Dir _ _) = True
+isDirectory _ = False
+
+-- | TODO: Refactor something, could fail at any point. risky.
+dirTreeToFileTree :: DirTree a -> FileTree FileName
+dirTreeToFileTree (Dir _ content) = FileTree dirs (Map.fromList (zip files files))
+  where
+    files = map getFileName $ filter (not . isDirectory) content
+    dirsonly = filter isDirectory content
+    dirs = Map.fromList (zip (map getDirName dirsonly) (map dirTreeToFileTree dirsonly))
+    getFileName :: DirTree a -> FileName
+    getFileName (File name _) = FileName name
+    getFileName (Failed name _) = FileName name
+    getDirName :: DirTree a -> DirName
+    getDirName (Dir name _) = DirName name
+dirTreeToFileTree (File _ _) = error "Single 'File' is unpresentable in 'FileTree'"
+dirTreeToFileTree _ = error "Errors is unpresentable in 'FileTree'"
