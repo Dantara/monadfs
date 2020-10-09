@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 704e2d08afd682e3c66cd28c5004580e9f15fe1a9579115fb5571f41679d4cdb
+-- hash: 8f4598ce7188edfe1f399c4f53fd1c28aed20e16e5d9f76cad9a0b0b823aa0dd
 
 name:           monadfs
 version:        0.1.0.0
@@ -43,14 +43,8 @@ library
     , base >=4.7 && <5
     , bytestring
     , containers
-<<<<<<< HEAD
-<<<<<<< HEAD
     , directory-tree
-=======
->>>>>>> Add dummy client and libraries to package
-=======
     , exceptions
->>>>>>> Refactor Client, introduce CLIClient compound monad
     , haskeline ==0.8.*
     , http-client
     , mtl
@@ -58,15 +52,11 @@ library
     , process
     , servant
     , servant-client
-<<<<<<< HEAD
     , servant-multipart
     , servant-server
     , stm
     , text
     , warp
-=======
-    , servant-server
->>>>>>> Add dummy client and libraries to package
   default-language: Haskell2010
 
 executable monadfs-client
@@ -83,14 +73,8 @@ executable monadfs-client
     , base >=4.7 && <5
     , bytestring
     , containers
-<<<<<<< HEAD
-<<<<<<< HEAD
     , directory-tree
-=======
->>>>>>> Add dummy client and libraries to package
-=======
     , exceptions
->>>>>>> Refactor Client, introduce CLIClient compound monad
     , haskeline ==0.8.*
     , http-client
     , monadfs
@@ -99,15 +83,11 @@ executable monadfs-client
     , process
     , servant
     , servant-client
-<<<<<<< HEAD
     , servant-multipart
     , servant-server
     , stm
     , text
     , warp
-=======
-    , servant-server
->>>>>>> Add dummy client and libraries to package
   default-language: Haskell2010
 
 executable monadfs-name-server
@@ -122,14 +102,8 @@ executable monadfs-name-server
     , base >=4.7 && <5
     , bytestring
     , containers
-<<<<<<< HEAD
-<<<<<<< HEAD
     , directory-tree
-=======
->>>>>>> Add dummy client and libraries to package
-=======
     , exceptions
->>>>>>> Refactor Client, introduce CLIClient compound monad
     , haskeline ==0.8.*
     , http-client
     , monadfs
@@ -138,15 +112,11 @@ executable monadfs-name-server
     , process
     , servant
     , servant-client
-<<<<<<< HEAD
     , servant-multipart
     , servant-server
     , stm
     , text
     , warp
-=======
-    , servant-server
->>>>>>> Add dummy client and libraries to package
   default-language: Haskell2010
 
 executable monadfs-storage-server
@@ -161,14 +131,8 @@ executable monadfs-storage-server
     , base >=4.7 && <5
     , bytestring
     , containers
-<<<<<<< HEAD
-<<<<<<< HEAD
     , directory-tree
-=======
->>>>>>> Add dummy client and libraries to package
-=======
     , exceptions
->>>>>>> Refactor Client, introduce CLIClient compound monad
     , haskeline ==0.8.*
     , http-client
     , monadfs
@@ -177,15 +141,11 @@ executable monadfs-storage-server
     , process
     , servant
     , servant-client
-<<<<<<< HEAD
     , servant-multipart
     , servant-server
     , stm
     , text
     , warp
-=======
-    , servant-server
->>>>>>> Add dummy client and libraries to package
   default-language: Haskell2010
 
 test-suite monadfs-test
@@ -201,14 +161,8 @@ test-suite monadfs-test
     , base >=4.7 && <5
     , bytestring
     , containers
-<<<<<<< HEAD
-<<<<<<< HEAD
     , directory-tree
-=======
->>>>>>> Add dummy client and libraries to package
-=======
     , exceptions
->>>>>>> Refactor Client, introduce CLIClient compound monad
     , haskeline ==0.8.*
     , http-client
     , monadfs
@@ -217,13 +171,9 @@ test-suite monadfs-test
     , process
     , servant
     , servant-client
-<<<<<<< HEAD
     , servant-multipart
     , servant-server
     , stm
     , text
     , warp
-=======
-    , servant-server
->>>>>>> Add dummy client and libraries to package
   default-language: Haskell2010
