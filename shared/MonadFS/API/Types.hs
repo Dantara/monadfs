@@ -84,5 +84,10 @@ newtype FileName = FileName String
 newtype DirInfo = DirInfo [FileName]
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
+
 data NewFile = NewFile FilePath Size
+  deriving (Eq, Show, Generic, FromJSON, ToJSON)
+
+
+data LoadFile = LoadFile FilePath ServerAddr
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
