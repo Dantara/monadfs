@@ -35,7 +35,8 @@ commands =
       try $ string "mv" >> spaces >> MoveCmd <$> pathParse <*> (spaces >> pathParse),
       try $ string "mkdir" >> spaces >> MakeDirCmd <$> pathParse,
       try $ string "rmdir" >> spaces >> RemoveDirCmd <$> pathParse,
-      try $ string "dirinfo" >> spaces >> DirInfoCmd <$> pathParse
+      try $ string "dirinfo" >> spaces >> DirInfoCmd <$> pathParse,
+      try $ string "cd" >> spaces >> ChangeDirCmd <$> pathParse
     ]
 
 helpList :: String

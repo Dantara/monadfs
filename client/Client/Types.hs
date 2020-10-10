@@ -6,24 +6,18 @@ module Client.Types where
 import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow)
 import Control.Monad.Reader
 import Control.Monad.State
-import Data.Proxy (Proxy (..))
-import Network.HTTP.Client (Manager, defaultManagerSettings, newManager)
+import Network.HTTP.Client (Manager)
 import Servant.Client
-import System.Console.Haskeline
-import System.Process (system)
-import Text.Parsec
-
-data MyEnv = MyEnv Manager BaseUrl (InputT IO ())
 
 data InputCommand
   = ExitCmd
   | SkipCmd
+  | EchoCmd String
+  | CowSayCmd String
+  | MyIpCmd
   | HelpCmd
   | InitCmd
   | PWDCmd
-  | MyIpCmd
-  | EchoCmd String
-  | CowSayCmd String
   | TouchCmd String
   | GetCmd String
   | PutCmd String
@@ -37,7 +31,10 @@ data InputCommand
   | ChangeDirCmd String
   deriving (Show, Eq)
 
-newtype Environment = Environment Manager
+data Environment = Environment
+  { envManager :: Manager,
+    envBaseUrl :: BaseUrl
+  }
 
 newtype CLIClient r s a = CLIClient {unClient :: (ReaderT r (StateT s IO) a)}
   deriving newtype (Functor, Applicative, Monad)

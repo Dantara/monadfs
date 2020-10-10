@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 8f4598ce7188edfe1f399c4f53fd1c28aed20e16e5d9f76cad9a0b0b823aa0dd
+-- hash: a45ea1a5344068d6fbb1fc38c01b44f988d8c3ec64470c95867eea6b5c0b4128
 
 name:           monadfs
 version:        0.1.0.0
@@ -62,6 +62,7 @@ library
 executable monadfs-client
   main-is: Main.hs
   other-modules:
+      Client.Commands
       Client.Parse
       Client.Types
       Paths_monadfs
