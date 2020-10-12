@@ -1,91 +1,69 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
 module Main where
 
-import Control.Monad.IO.Class (MonadIO (liftIO))
-import Data.Proxy (Proxy (..))
-import Network.HTTP.Client (Manager, defaultManagerSettings, newManager)
-import Servant.API (Get, PlainText, type (:>))
+import Client.Commands
+import Client.Parse
+import Client.Types
+import Control.Monad.Reader
+import Control.Monad.State (get)
+import Network.HTTP.Client (defaultManagerSettings, newManager)
 import Servant.Client
 import System.Console.Haskeline
+import System.Environment (getArgs)
 import System.Process (system)
-import Text.Parsec
 
 main :: IO ()
 main = run
 
-type MyAPI = "ip" :> Get '[PlainText] String
+evalCommand :: InputCommand -> InputT (CLIClient Environment String) ()
+evalCommand ExitCmd = return ()
+evalCommand SkipCmd = return ()
+evalCommand (EchoCmd str) = outputStrLn str
+evalCommand (CowSayCmd str) = void $ liftIO (system ("cowsay " ++ str))
+evalCommand MyIpCmd = getMyIPCommand
+evalCommand HelpCmd = outputStr helpList
+evalCommand InitCmd = initCommand
+evalCommand PWDCmd = lift get >>= outputStrLn
+evalCommand (TouchCmd fl) = touchCommand fl
+evalCommand (GetCmd remote loc) = getCommand remote loc
+evalCommand (PutCmd loc remote) = putCommand loc remote
+evalCommand (RemoveCmd fl) = removeCommand fl
+evalCommand (FileInfoCmd fl) = fileInfoCommand fl
+evalCommand (CopyCmd src dst) = copyCommand src dst
+evalCommand (MoveCmd src dst) = moveCommand src dst
+evalCommand (MakeDirCmd dr) = makeDirCommand dr
+evalCommand (RemoveDirCmd dr) = removeDirCommand dr
+evalCommand (DirInfoCmd dr) = dirInfoCommand dr
+evalCommand (ChangeDirCmd path) = changeDirCommand path
 
-api :: Proxy MyAPI
-api = Proxy
+mainLoop :: InputT (CLIClient Environment String) ()
+mainLoop = do
+  input <- lift get >>= (\dir -> getInputLine (dir ++ " >>= "))
+  case parseCommand input of
+    (Left msg) -> outputStrLn ("Wrong command, " ++ show msg) >> mainLoop
+    (Right ExitCmd) -> return ()
+    (Right cmd) -> evalCommand cmd >> mainLoop
 
-getIP :: ClientM String
-getIP = client api
-
-myURL :: BaseUrl
-myURL = BaseUrl Http "ifconfig.me" 80 ""
-
-data MyEnv = MyEnv Manager BaseUrl (InputT IO ())
-
-data InputCommand
-  = ExitCmd
-  | SkipCmd
-  | HiCmd
-  | EchoCmd String
-  | CowSayCmd String
-  | MyIpCmd
-  | TouchCmd String
-  | MoveCmd String String
-  deriving (Show, Eq)
-
-commands :: Parsec String () InputCommand
-commands =
-  choice
-    [ try
-        ( string "q" <|> string "quit"
-            <|> string "exit"
-            <|> string "bye"
-        )
-        >> return ExitCmd,
-      string "hello" >> return HiCmd,
-      string "echo" >> spaces >> EchoCmd <$> many anyChar,
-      string "cowsay" >> spaces >> CowSayCmd <$> many anyChar,
-      string "myip" >> return MyIpCmd,
-      string "touch" >> spaces >> TouchCmd <$> pathParse,
-      string "mv" >> spaces >> MoveCmd <$> pathParse <*> (spaces >> pathParse)
-    ]
-
-pathParse :: Parsec String () String
-pathParse = many1 (alphaNum <|> oneOf "/.@-_+")
-
-parseCommand :: Maybe String -> Either ParseError InputCommand
-parseCommand Nothing = Right ExitCmd
-parseCommand (Just "") = Right SkipCmd
-parseCommand (Just x) = parse commands "" x
-
-evalCommand :: Manager -> (Manager -> InputT IO ()) -> InputCommand -> InputT IO ()
-evalCommand _ _ ExitCmd = return ()
-evalCommand mngr loop SkipCmd = loop mngr
-evalCommand mngr loop (EchoCmd str) = outputStrLn str >> loop mngr
-evalCommand mngr loop (CowSayCmd str) = liftIO (system ("cowsay " ++ str)) >> loop mngr
-evalCommand mngr loop MyIpCmd =
-  liftIO (runClientM getIP (mkClientEnv mngr myURL))
-    >>= outputStrLn . show >> loop mngr
-evalCommand mngr loop HiCmd = outputStrLn "hi!" >> loop mngr
+welcome :: InputT (CLIClient Environment String) ()
+welcome = do
+  outputStrLn "Welcome to DFS client! Type 'help' for help;)"
+  mainLoop
+  outputStrLn "Goodbye!"
 
 run :: IO ()
-run = runInputT defaultSettings welcome
-  where
-    welcome :: InputT IO ()
-    welcome = do
-      mngr <- liftIO $ newManager defaultManagerSettings
-      outputStrLn "Welcome to DFS client! Type 'help' for help;)"
-      loop mngr
-      outputStrLn "Goodbye!"
-    loop :: Manager -> InputT IO ()
-    loop mngr = do
-      minput <- getInputLine ">>= "
-      case parseCommand minput of
-        (Left msg) -> outputStrLn ("Wrong command, " ++ show msg) >> loop mngr
-        (Right cmd) -> evalCommand mngr loop cmd
+run = do
+  mngr <- liftIO $ newManager defaultManagerSettings
+  args <- getArgs
+  if length args /= 2
+    then putStrLn "Usage: client <nameserver address> <port>"
+    else
+      runCLIClient
+        ( Environment
+            mngr
+            (BaseUrl Http (args !! 0) (read $ args !! 1) "")
+        )
+        "/"
+        (runInputT defaultSettings welcome)

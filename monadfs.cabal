@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 44ac5924e915210e18e18cae1a976232ad06f832132cae84c44b73b6d92baa3e
+-- hash: 0bd6af6c4be6ae60fc6e5b0fd111eef4934b5d4130f5cc2f043b8acbf4633689
 
 name:           monadfs
 version:        0.1.0.0
@@ -43,6 +43,10 @@ library
     , base >=4.7 && <5
     , bytestring
     , containers
+    , directory
+    , directory-tree
+    , disk-free-space
+    , exceptions
     , haskeline ==0.8.*
     , http-client
     , mtl
@@ -50,13 +54,19 @@ library
     , process
     , servant
     , servant-client
+    , servant-multipart ==0.11.6
     , servant-server
+    , stm
     , text
+    , warp
   default-language: Haskell2010
 
 executable monadfs-client
   main-is: Main.hs
   other-modules:
+      Client.Commands
+      Client.Parse
+      Client.Types
       Paths_monadfs
   hs-source-dirs:
       client
@@ -66,6 +76,10 @@ executable monadfs-client
     , base >=4.7 && <5
     , bytestring
     , containers
+    , directory
+    , directory-tree
+    , disk-free-space
+    , exceptions
     , haskeline ==0.8.*
     , http-client
     , monadfs
@@ -74,8 +88,11 @@ executable monadfs-client
     , process
     , servant
     , servant-client
+    , servant-multipart ==0.11.6
     , servant-server
+    , stm
     , text
+    , warp
   default-language: Haskell2010
 
 executable monadfs-name-server
@@ -90,6 +107,10 @@ executable monadfs-name-server
     , base >=4.7 && <5
     , bytestring
     , containers
+    , directory
+    , directory-tree
+    , disk-free-space
+    , exceptions
     , haskeline ==0.8.*
     , http-client
     , monadfs
@@ -98,8 +119,11 @@ executable monadfs-name-server
     , process
     , servant
     , servant-client
+    , servant-multipart ==0.11.6
     , servant-server
+    , stm
     , text
+    , warp
   default-language: Haskell2010
 
 executable monadfs-storage-server
@@ -114,6 +138,10 @@ executable monadfs-storage-server
     , base >=4.7 && <5
     , bytestring
     , containers
+    , directory
+    , directory-tree
+    , disk-free-space
+    , exceptions
     , haskeline ==0.8.*
     , http-client
     , monadfs
@@ -122,8 +150,11 @@ executable monadfs-storage-server
     , process
     , servant
     , servant-client
+    , servant-multipart ==0.11.6
     , servant-server
+    , stm
     , text
+    , warp
   default-language: Haskell2010
 
 test-suite monadfs-test
@@ -139,6 +170,10 @@ test-suite monadfs-test
     , base >=4.7 && <5
     , bytestring
     , containers
+    , directory
+    , directory-tree
+    , disk-free-space
+    , exceptions
     , haskeline ==0.8.*
     , http-client
     , monadfs
@@ -147,6 +182,9 @@ test-suite monadfs-test
     , process
     , servant
     , servant-client
+    , servant-multipart ==0.11.6
     , servant-server
+    , stm
     , text
+    , warp
   default-language: Haskell2010
