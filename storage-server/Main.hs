@@ -66,7 +66,7 @@ initController = liftIO (initialize `catch` exceptionWrapper)
       StorageServerOk . Size <$> liftIO (getAvailSpace baseLocalDir)
 
 -- | TODO: Add exception handling for edge cases
-treeController :: Handler (FileTree FileName)
+treeController :: Handler (FileTree ())
 treeController = liftIO (traverseDirectory baseLocalDir)
 
 statusController :: Handler StorageServerStatus
