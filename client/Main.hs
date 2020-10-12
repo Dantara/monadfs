@@ -27,17 +27,18 @@ evalCommand MyIpCmd = getMyIPCommand
 evalCommand HelpCmd = outputStr helpList
 evalCommand InitCmd = initCommand
 evalCommand PWDCmd = lift get >>= outputStrLn
-evalCommand (TouchCmd fl) = touchCommand fl
-evalCommand (GetCmd remote loc) = getCommand remote loc
-evalCommand (PutCmd loc remote) = putCommand loc remote
-evalCommand (RemoveCmd fl) = removeCommand fl
-evalCommand (FileInfoCmd fl) = fileInfoCommand fl
+evalCommand (TouchCmd fl) = lift get >>= \pref -> touchCommand (pref ++ fl)
+evalCommand (GetCmd remote loc) = lift get >>= \pref -> getCommand (pref ++ remote) loc
+evalCommand (PutCmd loc remote) = lift get >>= \pref -> putCommand loc (pref ++ remote)
+evalCommand (RemoveCmd fl) = lift get >>= \pref -> removeCommand (pref ++ fl)
+evalCommand (FileInfoCmd fl) = lift get >>= \pref -> fileInfoCommand (pref ++ fl)
 evalCommand (CopyCmd src dst) = copyCommand src dst
 evalCommand (MoveCmd src dst) = moveCommand src dst
-evalCommand (MakeDirCmd dr) = makeDirCommand dr
-evalCommand (RemoveDirCmd dr) = removeDirCommand dr
+evalCommand (MakeDirCmd dr) = lift get >>= \pref -> makeDirCommand (pref ++ dr)
+evalCommand (RemoveDirCmd dr) = lift get >>= \pref -> removeDirCommand (pref ++ dr)
+evalCommand (LsDirCmd dr) = lift get >>= \pref -> dirInfoCommand (pref ++ dr)
 evalCommand (DirInfoCmd dr) = dirInfoCommand dr
-evalCommand (ChangeDirCmd path) = changeDirCommand path
+evalCommand (ChangeDirCmd path) = lift get >>= \pref -> changeDirCommand (pref ++ path)
 
 mainLoop :: InputT (CLIClient Environment String) ()
 mainLoop = do

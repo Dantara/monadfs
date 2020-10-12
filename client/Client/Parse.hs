@@ -36,6 +36,7 @@ commands =
       try $ string "mkdir" >> spaces >> MakeDirCmd <$> pathParse,
       try $ string "rmdir" >> spaces >> RemoveDirCmd <$> pathParse,
       try $ string "dirinfo" >> spaces >> DirInfoCmd <$> pathParse,
+      try $ string "ls" >> spaces >> LsDirCmd <$> pathParse,
       try $ string "cd" >> spaces >> ChangeDirCmd <$> pathParse
     ]
 
@@ -53,14 +54,15 @@ helpList =
         "echo",
         "cowsay",
         "myip",
-        "touch",
+        "touch <relpath>",
         "get <remote> <local>",
         "put <local> <remote>",
-        "rm",
-        "fileinfo",
-        "cp",
-        "mv",
-        "mkdir",
-        "rmdir",
-        "dirinfo"
+        "rm <relpath>",
+        "fileinfo <rel>",
+        "cp <abs> <abs>",
+        "mv <abs> <abs>",
+        "mkdir <rel>",
+        "rmdir <rel>",
+        "dirinfo <abs>",
+        "ls <rel>"
       ]
