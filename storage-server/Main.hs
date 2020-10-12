@@ -20,12 +20,14 @@ import Servant.Multipart
 import System.Directory
 import System.Directory.Tree (AnchoredDirTree ((:/)), build)
 import System.DiskSpace (getAvailSpace)
+import System.Environment (getArgs)
+import Text.Read (readMaybe)
 
 baseLocalDir :: FilePath
 baseLocalDir = "/monadfs/storage"
 
-storageServerPort :: Int
-storageServerPort = 4000
+storageServerDefaultPort :: Int
+storageServerDefaultPort = 4000
 
 storageServerApi :: Proxy StorageServerAPI
 storageServerApi = Proxy
@@ -55,10 +57,15 @@ downloadapi = Proxy
 downloadClient :: String -> ClientM BS.ByteString
 downloadClient = client downloadapi
 
+parsePort :: [String] -> Int
+parsePort [port] = maybe storageServerDefaultPort id (readMaybe port)
+parsePort _ = storageServerDefaultPort
+
 main :: IO ()
 main = do
-  putStrLn $ "[+] Starting Storage Server on " <> show storageServerPort <> " port."
-  run storageServerPort (serve storageServerApi storageServer)
+  port <- parsePort <$> getArgs
+  putStrLn $ "[+] Starting Storage Server on " <> show port <> " port."
+  run port (serve storageServerApi storageServer)
 
 -- | Controllers
 
