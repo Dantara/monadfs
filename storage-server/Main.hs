@@ -6,13 +6,8 @@
 module Main where
 
 import Control.Exception (catch)
-import Control.Monad
 import Control.Monad.IO.Class (liftIO)
 import qualified Data.ByteString as BS
-import Data.List (stripPrefix)
-import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as Map
-import Data.Maybe (maybe)
 import qualified Data.Text as T
 import MonadFS.API.StorageServer (StorageServerAPI)
 import MonadFS.API.Types
