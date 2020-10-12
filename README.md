@@ -32,7 +32,7 @@ According to [project description](https://docs.google.com/document/d/1Is2QFO20R
 1. Understand the roles of namenode, storages and client, distribute functionallity
 2. Go deep into haskell language libraries
 3. Write compiled and working web server
-4. Deploy servers on [AWS](https://aws.amazon.com/) 
+4. Deploy servers on [AWS](https://aws.amazon.com/) using [docker](https://www.docker.com/)
 
 ### __Prerequisites__ <a name="prerequisites"></a>
 
@@ -75,8 +75,14 @@ stack exec monadfs-storage-server
 ```
 
 ### __Implementation details__ <a name="implemantation"></a>
+Project has the following structure:
+![Pipeline](./images/ds-project2.png)
+We have one _namenode_ which keeps metadata and controls storage services. In _docker-compose.yml_ we can define the number of _storage services_, which is 3 by default. _Storage server_ is the data store which provides _client_ with access to data files. Whenever a _client_ executes some command, it connects to _name server_, which either executes this command (_dirInfo_, _fileInfo_, _create_) or finds where needed data resides and returns address to _client_, which in its turn connects to _storage server_ and executes the command (_get_, _put_).
 
-
+API for _name server_:
+![Pipeline](./images/1.png)
+API for _storage server_:
+![Pipeline](./images/2.png)
 
 ### __File Structure__ <a name="structure"></a>
 
@@ -113,21 +119,30 @@ Here you can see simplified file structure of a project:
 
 **Alfiya Mussabekova**
 * Report
-* Dockerfiles
+* Project deployment on [AWS](https://aws.amazon.com/)
+* Docker containeranization
 * Client server
 
 **Nikita Aleschenko**
 * Name server
+* Project deployment on [AWS](https://aws.amazon.com/)
 * Report
 
 ### __Conclusion__ <a name="conclusion"></a>
-Accomplished Goals
+The stated goals were achieved, one of the difficulties that we met during the project is parsing of _relative_ and _absolute_ file _paths_ in console client commands. 
 
-Unaccomplished Goals
+Another one is that sometimes because of luck of time we made design decisions which allowed us to code faster, but now they are harder to understand and maintain. For example, error massages in our implementation are not handled in fancy way, we just directly forward them to user. 
 
-What was good
+The difficulties also appeared in docker deployment part, because in order to build and compile haskell project we need <i>stack</i> (a cross-platform program for developing haskell projects), which image is about 11GB. Therefore, we needed to have 2 stage _Dockerfile_ in order to make docker images with components of _DFS_ light.
 
-What could be improved
+What was good?
+* Purely functional
+* Strong type system
+* Team organization
+
+What could be improved?
+* Time management
+* Implement _change dir_ on namenode
 
 ### __References__ <a name="refer"></a>
 
