@@ -1,10 +1,14 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeOperators #-}
 
 module Main where
 
 import Control.Exception (catch)
 import Control.Monad
 import Control.Monad.IO.Class (liftIO)
+import qualified Data.ByteString as BS
 import Data.List (stripPrefix)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
@@ -12,13 +16,14 @@ import Data.Maybe (maybe)
 import qualified Data.Text as T
 import MonadFS.API.StorageServer (StorageServerAPI)
 import MonadFS.API.Types
-import MonadFS.FileTree (DirName (DirName), FileTree (FileTree))
+import MonadFS.FileTree (FileTree, dirTreeToFileTree)
+import Network.HTTP.Client (defaultManagerSettings, newManager)
 import Network.Wai.Handler.Warp (run)
 import Servant
+import Servant.Client
 import Servant.Multipart
-import Servant.Multipart (MultipartData, Tmp)
 import System.Directory
-import System.Directory.Tree (AnchoredDirTree ((:/)), DirTree (Dir, Failed, File), build)
+import System.Directory.Tree (AnchoredDirTree ((:/)), build)
 import System.DiskSpace (getAvailSpace)
 
 baseLocalDir :: FilePath
@@ -45,6 +50,15 @@ storageServer =
          )
     :<|> ( dirCreateController :<|> dirDeleteController
          )
+
+-- | Download file from another storage
+type DownloadApi = "file" :> "read" :> Capture "" String :> Get '[OctetStream] BS.ByteString
+
+downloadapi :: Proxy DownloadApi
+downloadapi = Proxy
+
+downloadClient :: String -> ClientM BS.ByteString
+downloadClient = client downloadapi
 
 main :: IO ()
 main = do
@@ -94,15 +108,30 @@ fileDeleteController filepath =
   liftIO (removeFile (baseLocalDir ++ filepath))
     >> return (FileOk ())
 
--- | TODO: implement
 fileCopyController :: SourceDest -> Handler (FileStatus ())
-fileCopyController _ = throwError (ServerError 501 "Sorry, not yet(" mempty [])
+fileCopyController (SourceDest src dst) =
+  liftIO (copyFileWithMetadata (baseLocalDir ++ src) (baseLocalDir ++ dst))
+    >> return (FileOk ())
 
 fileMoveController :: SourceDest -> Handler (FileStatus ())
-fileMoveController _ = throwError (ServerError 501 "Sorry, not yet(" mempty [])
+fileMoveController struct@(SourceDest src _dst) =
+  fileCopyController struct
+    >> fileDeleteController src
 
 fileLoadController :: LoadFile -> Handler (FileStatus ())
-fileLoadController _ = return (FileOk ())
+fileLoadController (LoadFile filepath (ServerAddr addr port)) = do
+  mngr <- liftIO $ newManager defaultManagerSettings
+  let url = BaseUrl Http addr port ""
+  eitherContent <-
+    liftIO $
+      runClientM
+        (downloadClient (drop 1 filepath))
+        (mkClientEnv mngr url)
+  case eitherContent of
+    (Left err) -> return (FileError $ CustomFileError (T.pack $ show err))
+    (Right content) ->
+      liftIO (BS.writeFile (baseLocalDir ++ filepath) content)
+        >> return (FileOk ())
 
 dirCreateController :: DirPath -> Handler (DirStatus ())
 dirCreateController (DirPath dirpath) =
@@ -131,27 +160,8 @@ exceptionWrapper e =
       T.pack ("Exception: " ++ show (e :: IOError))
 
 -- | 'dirPath' MUST be valid path to directory, **not** file
-traverseDirectory :: FilePath -> IO (FileTree FileName)
+traverseDirectory :: FilePath -> IO (FileTree ())
 traverseDirectory dirPath = do
   anchoredTree <- build dirPath
-  let _ :/ tree = anchoredTree
+  let _ :/ tree = const () <$> anchoredTree
   return (dirTreeToFileTree tree)
-
-isDirectory :: DirTree a -> Bool
-isDirectory (Dir _ _) = True
-isDirectory _ = False
-
--- | TODO: Refactor something, could fail at any point. risky.
-dirTreeToFileTree :: DirTree a -> FileTree FileName
-dirTreeToFileTree (Dir _ content) = FileTree dirs (Map.fromList (zip files files))
-  where
-    files = map getFileName $ filter (not . isDirectory) content
-    dirsonly = filter isDirectory content
-    dirs = Map.fromList (zip (map getDirName dirsonly) (map dirTreeToFileTree dirsonly))
-    getFileName :: DirTree a -> FileName
-    getFileName (File name _) = FileName name
-    getFileName (Failed name _) = FileName name
-    getDirName :: DirTree a -> DirName
-    getDirName (Dir name _) = DirName name
-dirTreeToFileTree (File _ _) = error "Single 'File' is unpresentable in 'FileTree'"
-dirTreeToFileTree _ = error "Errors is unpresentable in 'FileTree'"
