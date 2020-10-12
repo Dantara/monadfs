@@ -6,6 +6,7 @@
 module Client.Commands where
 
 import Client.Types
+import Control.Monad.Catch
 import Control.Monad.Reader
 import Control.Monad.State
 import qualified Data.ByteString as BS
@@ -14,6 +15,7 @@ import qualified Data.Text as T
 import MonadFS.API.NameServer
 import MonadFS.API.StorageServer
 import MonadFS.API.Types
+import qualified Network.HTTP.Client as Net
 import Servant
 import Servant.Client
 import Servant.Multipart
@@ -61,16 +63,6 @@ _ :<|> _ :<|> _
   :<|> (_ :<|> _) = client storageServerApi
 
 -- | Download file from another storage
-type DownloadApi =
-  "file" :> "read" :> Capture "" String
-    :> Get '[OctetStream] BS.ByteString
-
-downloadApi :: Proxy DownloadApi
-downloadApi = Proxy
-
-downloadClient :: String -> ClientM BS.ByteString
-downloadClient = client downloadApi
-
 getMyIPCommand :: InputT (CLIClient Environment String) ()
 getMyIPCommand =
   lift (asks envManager)
@@ -114,35 +106,33 @@ getCommand remotename localname = do
   case ans of
     (Right (FileOk (ServerAddr addr port))) -> do
       let url = BaseUrl Http addr port ""
+      adr <- Net.parseRequest ("http://" ++ addr ++ ":" ++ show port ++ "/file/read" ++ remotename)
       response <-
         liftIO
-          ( runClientM
-              (downloadClient remotename)
-              (mkClientEnv mngr url)
+          ( Net.httpLbs adr mngr
           )
-      case response of
-        (Left err) -> outputStrLn (show err)
-        (Right content) ->
-          liftIO (BS.writeFile localname content)
-            >> outputStrLn ("File " ++ remotename ++ " saved to " ++ localname)
+      liftIO (BL.writeFile localname (Net.responseBody response))
+        >> outputStrLn ("File " ++ remotename ++ " saved to " ++ localname)
     err -> outputStrLn (show err)
 
 putCommand :: FilePath -> FilePath -> InputT (CLIClient Environment String) ()
-putCommand localname remotename = do
-  env <- lift (asks mkNameEnv)
-  flsize <- liftIO (getFileSize localname)
-  ans <-
-    liftIO
-      ( runClientM
-          ( fileWriteClient
-              (NewFile remotename (Size flsize))
+putCommand localname remotename = wrapper `catch` (\e -> outputStrLn ("Something went wrong: " ++ show (e :: SomeException)))
+  where
+    wrapper = do
+      env <- lift (asks mkNameEnv)
+      flsize <- liftIO (getFileSize localname)
+      ans <-
+        liftIO
+          ( runClientM
+              ( fileWriteClient
+                  (NewFile remotename (Size flsize))
+              )
+              env
           )
-          env
-      )
-  case ans of
-    (Right (FileOk servers)) ->
-      sequence_ (fmap (uploadFile localname remotename) servers)
-    err -> outputStrLn (show err)
+      case ans of
+        (Right (FileOk servers)) ->
+          sequence_ (fmap (uploadFile localname remotename) servers)
+        err -> outputStrLn (show err)
 
 uploadFile ::
   FilePath ->
