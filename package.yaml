@@ -36,6 +36,13 @@ dependencies:
 - process
 - http-client
 - text
+- stm
+- servant-multipart == 0.11.6
+- warp
+- directory
+- directory-tree
+- disk-free-space
+- exceptions
 
 library:
   source-dirs: shared

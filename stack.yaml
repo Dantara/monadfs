@@ -41,6 +41,7 @@ packages:
 #
 extra-deps:
   - haskeline-0.8.1.0
+  - servant-multipart-0.11.6
 
 # Override default flag values for local packages and extra-deps
 # flags: {}
