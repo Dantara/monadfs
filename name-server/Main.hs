@@ -14,16 +14,13 @@ import           Control.Monad.Except
 import           Control.Monad.Reader
 import           Control.Monad.STM
 import           Data.Aeson
-import           Data.ByteString.Lazy        as BS (writeFile)
+import           Data.ByteString.Lazy        as BS (readFile, writeFile)
 import           Data.List
 import           Data.Map.Strict             (Map)
 import qualified Data.Map.Strict             as Map
 import           Data.Maybe                  (isJust)
 import           Data.Set                    (Set)
 import qualified Data.Set                    as Set
-import           Data.Text                   (Text)
-import qualified Data.Text                   as T
-import qualified Data.Text.IO                as T
 import           GHC.Generics
 import           MonadFS.API.NameServer
 import           MonadFS.API.StorageServer
@@ -34,9 +31,12 @@ import           Network.HTTP.Client         (Manager, defaultManagerSettings,
 import           Network.Wai.Handler.Warp    (run)
 import           Servant
 import           Servant.Client
+import           System.Directory            (doesFileExist)
 
-nameServerPort :: Int
-nameServerPort = 4000
+
+configFileName :: FilePath
+configFileName = "name-server.conf"
+
 
 newtype AppM a = AppM { runAppM :: ReaderT AppState Handler a }
   deriving (Functor)
@@ -59,6 +59,7 @@ data StorageServer = StorageServer {
   , ssSize :: Size
   } deriving (Eq, Ord)
 
+
 newtype RequestM a = RequestM { runRequestM :: ReaderT Manager IO a }
   deriving (Functor)
   deriving newtype (
@@ -67,38 +68,81 @@ newtype RequestM a = RequestM { runRequestM :: ReaderT Manager IO a }
            , MonadReader Manager
            , MonadIO )
 
+
 data Config = Config {
     port                      :: Int
-  , storageServersAddrs       :: ServerAddr
+  , storageServersAddrs       :: [ServerAddr]
   , replicasAmount            :: Int
   , fileTreeCachePeriod       :: Int
   , fileTreeCacheFile         :: FilePath
   , avaliablityCheckingPeriod :: Int
 } deriving (Show, Generic, FromJSON)
 
+
+
+readConfig :: IO (Maybe Config)
+readConfig = do
+  isExist <- doesFileExist configFileName
+  if isExist then
+    decode <$> BS.readFile configFileName
+  else pure Nothing
+
+
+
+readTreeIfExists :: FilePath -> TVar VFS -> IO ()
+readTreeIfExists path tVfs = do
+  putStrLn "[+] Checking cached version of VFS."
+  isExist <- doesFileExist path
+
+  case isExist of
+    True -> do
+      putStrLn "[+] name-server.tree file is found."
+      putStrLn "[+] Restoring the cache."
+      cache <- BS.readFile path
+
+      maybe
+        (putStrLn "[#] Cache is malformed.")
+        (\t -> (atomically $ writeTVar tVfs t)
+          >> putStrLn "[+] Cache is restored.")
+        (decode cache)
+
+    False ->
+      putStrLn "[+] Cache is not found. Using empty state."
+
+
+
 proceedRequestM :: Manager -> RequestM a -> IO a
 proceedRequestM mng req = runReaderT (runRequestM req) mng
 
 
-initState :: IO AppState
-initState = do
+initState :: Config -> IO AppState
+initState conf = do
   ft <- newTVarIO initVFS
   aSSs <- newTVarIO []
   mng <- newManager defaultManagerSettings
   pure $ AppState ft aSSs addrs mng replicas
   where
-    replicas = 2
-    addrs = [
-        ServerAddr "127.0.0.1" 3000
-      , ServerAddr "127.0.0.1" 3040
-      , ServerAddr "127.0.0.1" 3080
-      ]
+    replicas = replicasAmount conf
+    addrs = storageServersAddrs conf
+
 
 main :: IO ()
 main = do
-  putStrLn $ "[+] Starting Name Server on " <> show nameServerPort <> " port."
-  s <- initState
-  run nameServerPort $ nameServerApp s
+  putStrLn "[+] Reading configuration file."
+  conf <- readConfig
+
+  case conf of
+    Nothing ->
+      putStrLn "[#] Not able read configuration file."
+    Just conf' -> do
+      s <- initState conf'
+      readTreeIfExists (fileTreeCacheFile conf') (fileTree s)
+      _ <- forkIO
+        $ saveVFS (fileTreeCacheFile conf') (fileTreeCachePeriod conf') (fileTree s)
+
+      putStrLn $ "[+] Starting Name Server on " <> show (port conf') <> " port."
+
+      run (port conf') $ nameServerApp s
 
 
 nameServerApp :: AppState -> Application
@@ -471,7 +515,8 @@ initVFS :: VFS
 initVFS = FileTree Map.empty Map.empty
 
 addrToBaseUrl :: ServerAddr -> BaseUrl
-addrToBaseUrl (ServerAddr url port) = BaseUrl Http url port ""
+addrToBaseUrl (ServerAddr url port') = BaseUrl Http url port' ""
+
 
 -- Maybe FileNode?
 addFileToTree :: NewFile -> [ServerAddr] -> VFS -> Either FileError VFS
