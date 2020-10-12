@@ -136,9 +136,13 @@ main = do
       putStrLn "[#] Not able read configuration file."
     Just conf' -> do
       s <- initState conf'
+
       readTreeIfExists (fileTreeCacheFile conf') (fileTree s)
+
       _ <- forkIO
         $ saveVFS (fileTreeCacheFile conf') (fileTreeCachePeriod conf') (fileTree s)
+      _ <- forkIO
+        $ replication s (avaliablityCheckingPeriod conf')
 
       putStrLn $ "[+] Starting Name Server on " <> show (port conf') <> " port."
 
@@ -175,11 +179,13 @@ initController = do
   ssAvbl <- asks avaliableSSs
   ssList <- asks ssAddrs
   mng <- asks globalManager
+  tTree <- asks fileTree
 
   let proceed = proceedRequestM mng
 
   ssAvbl' <- liftIO $ proceed $ lookupSSs ssList
   liftIO $ atomically $ writeTVar ssAvbl ssAvbl'
+  liftIO $ atomically $ writeTVar tTree initVFS
   liftIO $ proceed (initializeSSs $ ssAddr <$> ssAvbl')
 
   case length ssAvbl' of
@@ -662,7 +668,7 @@ extractAddrsFromVFS tree = Set.toList $ go tree Set.empty
       $ (\(FileInfo _ xs) -> xs)
       <$> Map.elems (files t)
 
-
+-- Fix /
 getDirInfo :: DirPath -> VFS -> Either DirError DirInfo
 getDirInfo path tree = DirInfo . Map.keys . files
   <$> findDir path tree
@@ -693,4 +699,16 @@ saveVFS :: FilePath -> Int -> TVar VFS -> IO ()
 saveVFS path sec tVfs = forever $ do
   vfs <- readTVarIO tVfs
   BS.writeFile path (encode vfs)
+  threadDelay (sec * 1000000)
+
+
+-- | Replication
+
+replication :: AppState -> Int -> IO ()
+replication state sec = forever $ do
+  let mng = globalManager state
+  let addrs = ssAddrs state
+  let tServers = avaliableSSs state
+  servers <- proceedRequestM mng $ lookupSSs addrs
+  atomically $ writeTVar tServers servers
   threadDelay (sec * 1000000)
