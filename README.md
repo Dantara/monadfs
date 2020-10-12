@@ -25,9 +25,14 @@ Pure functional distributed file system build on Haskell.
 9. [Useful links](#links)
 
 ## __Description of the task__ <a name="description"></a>
-According to [project description](https://docs.google.com/document/d/1Is2QFO20RjxVrZMSMCxsBa-FUgGgaIJ7e_o3CeQKN6w/edit#heading=h.3457zhh89myt), the task is to implement a simple <i>Distributed File System</i>, which will be able to support basic operations like file reading, deleting, writing, creating and etc. The main components of DFS are: <i>Name server</i>, <i>Storage servers</i>, <i>Client</i>.
+According to [project description](https://docs.google.com/document/d/1Is2QFO20RjxVrZMSMCxsBa-FUgGgaIJ7e_o3CeQKN6w/edit#heading=h.3457zhh89myt), the task is to implement a simple <i>Distributed File System</i>, which will be able to support basic operations like file reading, deleting, writing, creating and etc. The main components of DFS are: <i>Name server</i>, <i>Storage servers</i>, <i>Client</i>. Clients access storage servers in order to read and write files. Storage servers must respond to certain commands from the naming server.
 
 ## __The goal of the assignment__ <a name="goal"></a>
+
+1. Understand the roles of namenode, storages and client, distribute functionallity
+2. Go deep into haskel language libraries
+3. Write compiled and working web server
+4. Deploy servers on [AWS](https://aws.amazon.com/) 
 
 ## __Prerequisites__ <a name="prerequisites"></a>
 
@@ -100,10 +105,13 @@ Here you can see simplified file structure of a project:
 
 ## __Member contribution__ <a name="contribution"></a>
 **Mihail Kuskov**
+* Client server
+* Storage server
 
 **Alfiya Mussabekova**
 
 **Nikita Aleschenko**
+
 
 ## __Conclusion__ <a name="conclusion"></a>
 #### Accomplished Goals
