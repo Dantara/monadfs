@@ -26,6 +26,7 @@ RUN mkdir /dfs
 WORKDIR /dfs
 # Copy binaries from previous stage
 COPY --from=0 /root/.local/bin .
+COPY name-server.conf .
 
 EXPOSE 4000
 

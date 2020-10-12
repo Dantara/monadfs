@@ -24,7 +24,7 @@ import System.Environment (getArgs)
 import Text.Read (readMaybe)
 
 baseLocalDir :: FilePath
-baseLocalDir = "/monadfs/storage"
+baseLocalDir = "monadfs/storage"
 
 storageServerDefaultPort :: Int
 storageServerDefaultPort = 4000
@@ -88,7 +88,7 @@ treeController = liftIO (traverseDirectory baseLocalDir)
 statusController :: Handler StorageServerStatus
 statusController =
   StorageServerOk . Size
-    <$> liftIO (getAvailSpace baseLocalDir)
+    <$> liftIO (getAvailSpace "/")
 
 fileCreateController :: String -> Handler (FileStatus ())
 fileCreateController filepath =
@@ -102,7 +102,7 @@ fileWriteController :: MultipartData Tmp -> Handler (FileStatus ())
 fileWriteController query = case extractWriteData query of
   (Left err) -> return (FileError (CustomFileError (T.pack err)))
   (Right (filepath, filedata)) -> do
-    liftIO $ copyFile (baseLocalDir ++ fdPayload filedata) filepath
+    liftIO $ copyFile (fdPayload filedata) (baseLocalDir ++ filepath)
     return (FileOk ())
 
 fileDeleteController :: String -> Handler (FileStatus ())
