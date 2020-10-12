@@ -30,7 +30,7 @@ According to [project description](https://docs.google.com/document/d/1Is2QFO20R
 ## __The goal of the assignment__ <a name="goal"></a>
 
 1. Understand the roles of namenode, storages and client, distribute functionallity
-2. Go deep into haskel language libraries
+2. Go deep into haskell language libraries
 3. Write compiled and working web server
 4. Deploy servers on [AWS](https://aws.amazon.com/) 
 
@@ -76,6 +76,8 @@ stack exec monadfs-storage-server
 
 ## __Implementation details__ <a name="implemantation"></a>
 
+
+
 ## __File Structure__ <a name="structure"></a>
 
 Here you can see simplified file structure of a project:
@@ -107,11 +109,16 @@ Here you can see simplified file structure of a project:
 **Mihail Kuskov**
 * Client server
 * Storage server
+* Report 
 
 **Alfiya Mussabekova**
+* Report
+* Dockerfiles
+* Client server
 
 **Nikita Aleschenko**
-
+* Name server
+* Report
 
 ## __Conclusion__ <a name="conclusion"></a>
 #### Accomplished Goals
