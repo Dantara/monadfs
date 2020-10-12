@@ -1,14 +1,20 @@
+{-# LANGUAGE DeriveAnyClass             #-}
 {-# LANGUAGE DeriveFunctor              #-}
+{-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE DerivingStrategies         #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings          #-}
 
 module Main where
 
+import           Control.Concurrent
 import           Control.Concurrent.STM.TVar
 import           Control.Monad.Except
 import           Control.Monad.Reader
 import           Control.Monad.STM
+import           Data.Aeson
+import           Data.ByteString.Lazy        as BS (writeFile)
 import           Data.List
 import           Data.Map.Strict             (Map)
 import qualified Data.Map.Strict             as Map
@@ -18,6 +24,7 @@ import qualified Data.Set                    as Set
 import           Data.Text                   (Text)
 import qualified Data.Text                   as T
 import qualified Data.Text.IO                as T
+import           GHC.Generics
 import           MonadFS.API.NameServer
 import           MonadFS.API.StorageServer
 import           MonadFS.API.Types
@@ -32,12 +39,12 @@ nameServerPort :: Int
 nameServerPort = 4000
 
 newtype AppM a = AppM { runAppM :: ReaderT AppState Handler a }
-  deriving ( Functor
-           , Applicative
+  deriving (Functor)
+  deriving newtype (
+             Applicative
            , Monad
            , MonadReader AppState
-           , MonadIO
-           )
+           , MonadIO )
 
 data AppState = AppState {
     fileTree         :: TVar VFS
@@ -53,12 +60,21 @@ data StorageServer = StorageServer {
   } deriving (Eq, Ord)
 
 newtype RequestM a = RequestM { runRequestM :: ReaderT Manager IO a }
-  deriving ( Functor
-           , Applicative
+  deriving (Functor)
+  deriving newtype (
+             Applicative
            , Monad
            , MonadReader Manager
-           , MonadIO
-           )
+           , MonadIO )
+
+data Config = Config {
+    port                      :: Int
+  , storageServersAddrs       :: ServerAddr
+  , replicasAmount            :: Int
+  , fileTreeCachePeriod       :: Int
+  , fileTreeCacheFile         :: FilePath
+  , avaliablityCheckingPeriod :: Int
+} deriving (Show, Generic, FromJSON)
 
 proceedRequestM :: Manager -> RequestM a -> IO a
 proceedRequestM mng req = runReaderT (runRequestM req) mng
@@ -355,7 +371,7 @@ dirDeleteClient :: DirPath -> ClientM (DirStatus ())
 
 
 initClient :<|> treeClient :<|> statusClient
-  :<|> (fileCreateClient :<|> fileReadClient :<|> fileWriteFile
+  :<|> (fileCreateClient :<|> _ :<|> _
        :<|> fileDeleteClient :<|> fileCopyClient
        :<|> fileMoveClient :<|> fileLoadClient)
   :<|> (dirCreateClient :<|> dirDeleteClient) = client storageServerApi
@@ -624,3 +640,12 @@ findDir (DirPath path) tree
       tail' = dropWhile (/= '/') path
       dirName' = DirName name
       dirs = directories tree
+
+
+-- | Saving state
+
+saveVFS :: FilePath -> Int -> TVar VFS -> IO ()
+saveVFS path sec tVfs = forever $ do
+  vfs <- readTVarIO tVfs
+  BS.writeFile path (encode vfs)
+  threadDelay (sec * 1000000)
