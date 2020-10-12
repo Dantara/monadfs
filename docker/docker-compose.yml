@@ -1,0 +1,14 @@
+version: '3'
+services:
+    namenode:
+        image: "krokodilchk/dfs-namenode"
+        ports:
+            - "4000:4000"
+    storage:
+        image: "krokodilchk/dfs-storage"
+        deploy:
+            replicas: 3
+        ports:
+            - "4000:4000"
+    client:
+        image: "krokodilchk/dfs-client"
