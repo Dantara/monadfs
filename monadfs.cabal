@@ -4,6 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
+
 -- hash: 0bd6af6c4be6ae60fc6e5b0fd111eef4934b5d4130f5cc2f043b8acbf4633689
 
 name:           monadfs

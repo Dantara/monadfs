@@ -41,6 +41,7 @@ dependencies:
 - warp
 - directory
 - directory-tree
+- directory
 - disk-free-space
 - exceptions
 
