@@ -19,8 +19,8 @@ data InputCommand
   | InitCmd
   | PWDCmd
   | TouchCmd String
-  | GetCmd String
-  | PutCmd String
+  | GetCmd String String
+  | PutCmd String String
   | RemoveCmd String
   | FileInfoCmd String
   | CopyCmd String String

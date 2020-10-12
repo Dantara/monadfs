@@ -28,8 +28,8 @@ evalCommand HelpCmd = outputStr helpList
 evalCommand InitCmd = initCommand
 evalCommand PWDCmd = lift get >>= outputStrLn
 evalCommand (TouchCmd fl) = touchCommand fl
-evalCommand (GetCmd fl) = getCommand fl
-evalCommand (PutCmd fl) = putCommand fl
+evalCommand (GetCmd remote loc) = getCommand remote loc
+evalCommand (PutCmd loc remote) = putCommand loc remote
 evalCommand (RemoveCmd fl) = removeCommand fl
 evalCommand (FileInfoCmd fl) = fileInfoCommand fl
 evalCommand (CopyCmd src dst) = copyCommand src dst

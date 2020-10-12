@@ -14,11 +14,11 @@ import qualified Data.Text as T
 import MonadFS.API.NameServer
 import MonadFS.API.StorageServer
 import MonadFS.API.Types
-import Network.HTTP.Client (defaultManagerSettings, newManager)
 import Servant
 import Servant.Client
 import Servant.Multipart
 import System.Console.Haskeline
+import System.Directory (getFileSize)
 
 nameServerApi :: Proxy NameServerAPI
 nameServerApi = Proxy
@@ -36,11 +36,12 @@ dirCreateClient :: DirPath -> ClientM (DirStatus ())
 dirDeleteClient :: DirPath -> ClientM (DirStatus ())
 dirInfoClient :: DirPath -> ClientM (DirStatus DirInfo)
 dirExistsClient :: DirPath -> ClientM (DirStatus ())
-fileWriteClient :: (BL.ByteString, MultipartData Tmp) -> ClientM (FileStatus ())
--- fileReadClient :: BS.ByteString -> ClientM Response
+fileReadClient :: [Char] -> ClientM (FileStatus ServerAddr)
+fileWriteClient :: NewFile -> ClientM (FileStatus [ServerAddr])
+filePutClient :: (BL.ByteString, MultipartData Tmp) -> ClientM (FileStatus ())
 initClient
-  :<|> ( fileCreateClient :<|> _
-           :<|> _
+  :<|> ( fileCreateClient :<|> fileReadClient
+           :<|> fileWriteClient
            :<|> fileDeleteClient
            :<|> fileInfoClient
            :<|> fileCopyClient
@@ -52,17 +53,37 @@ initClient
          ) = client nameServerApi
 
 _ :<|> _ :<|> _
-  :<|> ( _ :<|> fileReadClient :<|> fileWriteClient
+  :<|> ( _ :<|> _ :<|> filePutClient
            :<|> _
            :<|> _
            :<|> _
          )
   :<|> (_ :<|> _) = client storageServerApi
 
+-- | Download file from another storage
+type DownloadApi =
+  "file" :> "read" :> Capture "" String
+    :> Get '[OctetStream] BS.ByteString
+
+downloadApi :: Proxy DownloadApi
+downloadApi = Proxy
+
+downloadClient :: String -> ClientM BS.ByteString
+downloadClient = client downloadApi
+
 getMyIPCommand :: InputT (CLIClient Environment String) ()
 getMyIPCommand =
   lift (asks envManager)
-    >>= (\mngr -> liftIO (runClientM getIP (mkClientEnv mngr (BaseUrl Http "ifconfig.me" 80 ""))))
+    >>= ( \mngr ->
+            liftIO
+              ( runClientM
+                  getIP
+                  ( mkClientEnv
+                      mngr
+                      (BaseUrl Http "ifconfig.me" 80 "")
+                  )
+              )
+        )
     >>= outputStrLn . show
   where
     api :: Proxy ("ip" :> Get '[PlainText] String)
@@ -79,25 +100,75 @@ initCommand = do
   ans <- liftIO (runClientM initClient env)
   outputStrLn (show ans)
 
-touchCommand :: String -> InputT (CLIClient Environment String) ()
+touchCommand :: FilePath -> InputT (CLIClient Environment String) ()
 touchCommand filepath = do
   env <- lift (asks mkNameEnv)
   ans <- liftIO (runClientM (fileCreateClient filepath) env)
   outputStrLn (show ans)
 
-getCommand :: String -> InputT (CLIClient Environment String) ()
-getCommand filepath = outputStrLn "Not implemented yet("
+getCommand :: FilePath -> FilePath -> InputT (CLIClient Environment String) ()
+getCommand remotename localname = do
+  env <- lift (asks mkNameEnv)
+  mngr <- lift (asks envManager)
+  ans <- liftIO (runClientM (fileReadClient remotename) env)
+  case ans of
+    (Right (FileOk (ServerAddr addr port))) -> do
+      let url = BaseUrl Http addr port ""
+      response <-
+        liftIO
+          ( runClientM
+              (downloadClient remotename)
+              (mkClientEnv mngr url)
+          )
+      case response of
+        (Left err) -> outputStrLn (show err)
+        (Right content) ->
+          liftIO (BS.writeFile localname content)
+            >> outputStrLn ("File " ++ remotename ++ " saved to " ++ localname)
+    err -> outputStrLn (show err)
 
-putCommand :: String -> InputT (CLIClient Environment String) ()
-putCommand filepath = outputStrLn "Not implemented yet("
+putCommand :: FilePath -> FilePath -> InputT (CLIClient Environment String) ()
+putCommand localname remotename = do
+  env <- lift (asks mkNameEnv)
+  flsize <- liftIO (getFileSize localname)
+  ans <-
+    liftIO
+      ( runClientM
+          ( fileWriteClient
+              (NewFile remotename (Size flsize))
+          )
+          env
+      )
+  case ans of
+    (Right (FileOk servers)) ->
+      sequence_ (fmap (uploadFile localname remotename) servers)
+    err -> outputStrLn (show err)
 
--- putCommand filepath = do
---   env <- lift (asks mkNameEnv)
---   boundary <- liftIO genBoundary
---   let textPath = T.pack filepath
---   let reqBody = MultipartData [Input "filepath" textPath] [FileData "payload" textPath "application/octet-stream" filepath]
---   ans <- liftIO (runClientM (fileWriteClient (boundary, reqBody)) env)
---   outputStrLn (show ans)
+uploadFile ::
+  FilePath ->
+  FilePath ->
+  ServerAddr ->
+  InputT (CLIClient Environment String) ()
+uploadFile localname remotename (ServerAddr addr port) = do
+  mngr <- lift (asks envManager)
+  let url = BaseUrl Http addr port ""
+  boundary <- liftIO genBoundary
+  let reqBody =
+        MultipartData
+          [Input "filepath" (T.pack remotename)]
+          [ FileData
+              "payload"
+              (T.pack localname)
+              "application/octet-stream"
+              localname
+          ]
+  ans <-
+    liftIO
+      ( runClientM
+          (filePutClient (boundary, reqBody))
+          (mkClientEnv mngr url)
+      )
+  outputStrLn (show ans)
 
 removeCommand :: String -> InputT (CLIClient Environment String) ()
 removeCommand filepath = do
