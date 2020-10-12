@@ -17,6 +17,10 @@ data FileTree a = FileTree {
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 
+instance Functor FileTree where
+  fmap f (FileTree ds fs) = FileTree (fmap f <$> ds) (f <$> fs)
+
+
 data FileNode = FileNode {
     fileName :: FileName
   , fileInfo :: FileInfo
@@ -29,9 +33,9 @@ newtype DirName = DirName String
             ToJSON, FromJSONKey, ToJSONKey)
 
 
-type VFS = FileTree FileNode
+type VFS = FileTree FileInfo
 
-type StorageTree = FileTree FileName
+type StorageTree = FileTree ()
 
 
 
