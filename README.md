@@ -76,11 +76,14 @@ stack exec monadfs-storage-server
 
 ### __Implementation details__ <a name="implemantation"></a>
 Project has the following structure:
+
 ![Pipeline](./images/ds-project2.png)
+
 We have one _namenode_ which keeps metadata and controls storage services. In _docker-compose.yml_ we can define the number of _storage services_, which is 3 by default. _Storage server_ is the data store which provides _client_ with access to data files. Whenever a _client_ executes some command, it connects to _name server_, which either executes this command (_dirInfo_, _fileInfo_, _create_) or finds where needed data resides and returns address to _client_, which in its turn connects to _storage server_ and executes the command (_get_, _put_).
 
 API for _name server_:
 ![Pipeline](./images/1.png)
+
 API for _storage server_:
 ![Pipeline](./images/2.png)
 
