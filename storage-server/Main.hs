@@ -39,7 +39,7 @@ main = do
 initController :: Handler StorageServerStatus
 initController = return (StorageServerOk (Size 666))
 
-treeController :: Handler (FileTree FileName)
+treeController :: Handler (FileTree ())
 treeController = return (FileTree Map.empty Map.empty)
 
 statusController :: Handler StorageServerStatus

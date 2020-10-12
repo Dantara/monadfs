@@ -343,7 +343,7 @@ dirExistsController path = do
 
 
 initClient :: ClientM StorageServerStatus
-treeClient :: ClientM (FileTree FileName)
+treeClient :: ClientM StorageTree
 statusClient :: ClientM StorageServerStatus
 fileCreateClient :: FilePath -> ClientM (FileStatus ())
 fileDeleteClient :: FilePath -> ClientM (FileStatus ())
@@ -465,7 +465,7 @@ addFileToTree (NewFile path size) addrs tree
   | null name = Left $ CustomFileError "Empty file name"
   | Map.member fileName' $ files tree = Left FileExists
   | null tail' = Right
-    $ tree { files = Map.insert fileName' fileNode' (files tree) }
+    $ tree { files = Map.insert fileName' fileInfo' (files tree) }
   | otherwise = case Map.lookup dirName' dirs of
       Just subTree ->
           either
@@ -479,7 +479,7 @@ addFileToTree (NewFile path size) addrs tree
       tail' = dropWhile (/= '/') path
       fileName' = FileName name
       dirName' = DirName name
-      fileNode' = FileNode (FileName name) (FileInfo size addrs)
+      fileInfo' = FileInfo size addrs
       dirs = directories tree
 
 
@@ -490,7 +490,7 @@ findFileNode path tree
   | null name = Left $ CustomFileError "Empty file name"
   | null tail' = maybe
     (Left FileDoesNotExist)
-    Right
+    (\i -> Right $ FileNode fileName' i)
     (Map.lookup fileName' (files tree))
   | null dirs = Left FileDoesNotExist
   | otherwise = maybe
@@ -512,7 +512,7 @@ deleteFileNode path tree
   | Map.member fileName' $ files tree = Left FileExists
   | null tail' = maybe
     (Left FileDoesNotExist)
-    (\x -> Right (x, tree { files = Map.delete fileName' fs }))
+    (\x -> Right (FileNode fileName' x, tree { files = Map.delete fileName' fs }))
     (Map.lookup fileName' fs)
   | otherwise = case Map.lookup dirName' dirs of
       Just subTree ->
@@ -598,7 +598,7 @@ extractAddrsFromVFS tree = Set.toList $ go tree Set.empty
     fromCurrentDir t =
       Set.fromList
       $ concat
-      $ (\(FileInfo _ xs) -> xs) . fileInfo
+      $ (\(FileInfo _ xs) -> xs)
       <$> Map.elems (files t)
 
 
