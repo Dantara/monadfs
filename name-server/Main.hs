@@ -675,6 +675,7 @@ getDirInfo path tree = DirInfo . Map.keys . files
 
 
 findDir :: DirPath -> VFS -> Either DirError VFS
+findDir (DirPath "/") tree = Right tree
 findDir (DirPath ('/':xs)) tree = findDir (DirPath xs) tree
 findDir (DirPath path) tree
   | null path = Left IncorrectDirPath
