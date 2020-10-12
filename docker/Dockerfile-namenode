@@ -1,0 +1,32 @@
+# Multi-stage build of image
+# First we need stack technology to build project and get executable binaries
+FROM fpco/stack-build:latest
+
+RUN mkdir /monadfs
+WORKDIR /monadfs
+# Copy project
+COPY ./stack.yaml .
+COPY ./stack.yaml.lock .
+COPY ./package.yaml .
+
+RUN stack build --dependencies-only
+
+COPY . /monadfs
+# Build project
+RUN stack build 
+# Install binaries to /root/.local/bin/
+RUN stack install  
+
+# Second stage is to execute binaries 
+FROM ubuntu:latest
+
+RUN apt update && apt install -y libtinfo5
+
+RUN mkdir /dfs
+WORKDIR /dfs
+# Copy binaries from previous stage
+COPY --from=0 /root/.local/bin .
+
+EXPOSE 4000
+
+CMD ["./monadfs-name-server"]

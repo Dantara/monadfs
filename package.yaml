@@ -37,10 +37,13 @@ dependencies:
 - http-client
 - text
 - stm
-- servant-multipart
+- servant-multipart == 0.11.6
 - warp
+- directory
 - directory-tree
 - directory
+- disk-free-space
+- exceptions
 
 library:
   source-dirs: shared

@@ -4,7 +4,8 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 28bf527513e0500b0a8e0b4573f68e3d91efa2954e69412b9b8dedc627cb6972
+
+-- hash: 0bd6af6c4be6ae60fc6e5b0fd111eef4934b5d4130f5cc2f043b8acbf4633689
 
 name:           monadfs
 version:        0.1.0.0
@@ -45,6 +46,8 @@ library
     , containers
     , directory
     , directory-tree
+    , disk-free-space
+    , exceptions
     , haskeline ==0.8.*
     , http-client
     , mtl
@@ -52,7 +55,7 @@ library
     , process
     , servant
     , servant-client
-    , servant-multipart
+    , servant-multipart ==0.11.6
     , servant-server
     , stm
     , text
@@ -62,6 +65,9 @@ library
 executable monadfs-client
   main-is: Main.hs
   other-modules:
+      Client.Commands
+      Client.Parse
+      Client.Types
       Paths_monadfs
   hs-source-dirs:
       client
@@ -73,6 +79,8 @@ executable monadfs-client
     , containers
     , directory
     , directory-tree
+    , disk-free-space
+    , exceptions
     , haskeline ==0.8.*
     , http-client
     , monadfs
@@ -81,7 +89,7 @@ executable monadfs-client
     , process
     , servant
     , servant-client
-    , servant-multipart
+    , servant-multipart ==0.11.6
     , servant-server
     , stm
     , text
@@ -102,6 +110,8 @@ executable monadfs-name-server
     , containers
     , directory
     , directory-tree
+    , disk-free-space
+    , exceptions
     , haskeline ==0.8.*
     , http-client
     , monadfs
@@ -110,7 +120,7 @@ executable monadfs-name-server
     , process
     , servant
     , servant-client
-    , servant-multipart
+    , servant-multipart ==0.11.6
     , servant-server
     , stm
     , text
@@ -131,6 +141,8 @@ executable monadfs-storage-server
     , containers
     , directory
     , directory-tree
+    , disk-free-space
+    , exceptions
     , haskeline ==0.8.*
     , http-client
     , monadfs
@@ -139,7 +151,7 @@ executable monadfs-storage-server
     , process
     , servant
     , servant-client
-    , servant-multipart
+    , servant-multipart ==0.11.6
     , servant-server
     , stm
     , text
@@ -161,6 +173,8 @@ test-suite monadfs-test
     , containers
     , directory
     , directory-tree
+    , disk-free-space
+    , exceptions
     , haskeline ==0.8.*
     , http-client
     , monadfs
@@ -169,7 +183,7 @@ test-suite monadfs-test
     , process
     , servant
     , servant-client
-    , servant-multipart
+    , servant-multipart ==0.11.6
     , servant-server
     , stm
     , text
