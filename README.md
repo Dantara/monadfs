@@ -1,18 +1,18 @@
 # Distributed Systems
-# Group Project 2: Distributed File System
+## Group Project 2: Distributed File System
 
-## Team monadfs
+### Team monadfs
 
 Pure functional distributed file system build on Haskell.
 
-### Team members:
+#### Team members:
 * Mihail Kuskov [m.kuskov@innopolis.university](m.kuskov@innopolis.university) 
 * Alfiya Mussabekova [a.mussabekova@innopolis.university](a.mussabekova@innopolis.university)
 * Nikita Aleshenko [n.aleschenko@innopolis.university](n.aleschenko@innopolis.university)
 
-### Link to [Github repository](https://github.com/Dantara/monadfs) 
+#### Link to [Github repository](https://github.com/Dantara/monadfs) 
 
-### Contents:
+#### Contents:
 0. [Description of the task](#description)
 1. [The goal of the assignment](#goal)
 2. [Prerequisites](#prerequisites)
@@ -24,24 +24,24 @@ Pure functional distributed file system build on Haskell.
 8. [References](#refer)
 9. [Useful links](#links)
 
-## __Description of the task__ <a name="description"></a>
+### __Description of the task__ <a name="description"></a>
 According to [project description](https://docs.google.com/document/d/1Is2QFO20RjxVrZMSMCxsBa-FUgGgaIJ7e_o3CeQKN6w/edit#heading=h.3457zhh89myt), the task is to implement a simple <i>Distributed File System</i>, which will be able to support basic operations like file reading, deleting, writing, creating and etc. The main components of DFS are: <i>Name server</i>, <i>Storage servers</i>, <i>Client</i>. Clients access storage servers in order to read and write files. Storage servers must respond to certain commands from the naming server.
 
-## __The goal of the assignment__ <a name="goal"></a>
+### __The goal of the assignment__ <a name="goal"></a>
 
 1. Understand the roles of namenode, storages and client, distribute functionallity
 2. Go deep into haskell language libraries
 3. Write compiled and working web server
 4. Deploy servers on [AWS](https://aws.amazon.com/) 
 
-## __Prerequisites__ <a name="prerequisites"></a>
+### __Prerequisites__ <a name="prerequisites"></a>
 
 This project relies on the [Haskell Stack tool](https://docs.haskellstack.org/en/stable/README/).
 
 It is recommended to get Stack with batteries included by
 installing [Haskell Platform](https://www.haskell.org/platform/).
 
-## __Build__ <a name="build"></a>
+### __Build__ <a name="build"></a>
 
 To build this project simply run
 
@@ -51,7 +51,7 @@ stack build
 
 This will install all dependencies, including a proper version of GHC
 
-## __Run__
+### __Run__
 
 This app consist of multiple executable. 
 You can run each one independently.
@@ -74,11 +74,11 @@ To start the storage server, run the following command:
 stack exec monadfs-storage-server
 ```
 
-## __Implementation details__ <a name="implemantation"></a>
+### __Implementation details__ <a name="implemantation"></a>
 
 
 
-## __File Structure__ <a name="structure"></a>
+### __File Structure__ <a name="structure"></a>
 
 Here you can see simplified file structure of a project:
 
@@ -105,7 +105,7 @@ Here you can see simplified file structure of a project:
 - Folder `shared` contains code which can be imported to every executable.
 - Folder `test` constains tests for a code.
 
-## __Member contribution__ <a name="contribution"></a>
+### __Member contribution__ <a name="contribution"></a>
 **Mihail Kuskov**
 * Client server
 * Storage server
@@ -120,21 +120,25 @@ Here you can see simplified file structure of a project:
 * Name server
 * Report
 
-## __Conclusion__ <a name="conclusion"></a>
-#### Accomplished Goals
+### __Conclusion__ <a name="conclusion"></a>
+Accomplished Goals
 
-#### Unaccomplished Goals
+Unaccomplished Goals
 
-#### What was good
+What was good
 
-#### What could be improved
+What could be improved
 
-## __References__ <a name="refer"></a>
+### __References__ <a name="refer"></a>
 
 * Link to [Github repository](https://github.com/Dantara/monadfs) 
 * Link to [Project description](https://docs.google.com/document/d/1Is2QFO20RjxVrZMSMCxsBa-FUgGgaIJ7e_o3CeQKN6w/edit#heading=h.3457zhh89myt) 
+* Link to [Presentation](https://docs.google.com/presentation/d/1y2G5OnczA4IQZ5S3T3t084YfqONjYGTgAWwkBjiDmbk/edit?usp=sharing)
+* Link to docker image for [name server](https://hub.docker.com/repository/docker/krokodilchk/dfs-namenode)
+* Link to docker image for [storage server](https://hub.docker.com/repository/docker/krokodilchk/dfs-storage)
+* Link to docker image for [client](https://hub.docker.com/repository/docker/krokodilchk/dfs-client)
 
-## __Useful Links__ <a name="links"></a>
+### __Useful Links__ <a name="links"></a>
 * [Haskell Stack tool](https://docs.haskellstack.org/en/stable/README/)
 * [Haskell Platform](https://www.haskell.org/platform/)
 * [directory-tree](https://hackage.haskell.org/package/directory-tree)
