@@ -9,7 +9,6 @@ import Client.Types
 import Control.Monad.Catch
 import Control.Monad.Reader
 import Control.Monad.State
-import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Text as T
 import MonadFS.API.NameServer
@@ -105,7 +104,6 @@ getCommand remotename localname = do
   ans <- liftIO (runClientM (fileReadClient remotename) env)
   case ans of
     (Right (FileOk (ServerAddr addr port))) -> do
-      let url = BaseUrl Http addr port ""
       adr <- Net.parseRequest ("http://" ++ addr ++ ":" ++ show port ++ "/file/read" ++ remotename)
       response <-
         liftIO

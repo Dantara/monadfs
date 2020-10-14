@@ -28,6 +28,7 @@ data InputCommand
   | MakeDirCmd String
   | RemoveDirCmd String
   | DirInfoCmd String
+  | LsDirCmd String
   | ChangeDirCmd String
   deriving (Show, Eq)
 
