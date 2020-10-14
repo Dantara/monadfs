@@ -16,6 +16,7 @@ import           MonadFS.FileTree
 import           Network.HTTP.Client         (Manager)
 import           Servant
 
+
 newtype AppM a = AppM { runAppM :: ReaderT AppState Handler a }
   deriving (Functor)
   deriving newtype (
@@ -24,6 +25,7 @@ newtype AppM a = AppM { runAppM :: ReaderT AppState Handler a }
            , MonadReader AppState
            , MonadIO )
 
+
 data AppState = AppState {
     fileTree         :: TVar VFS
   , avaliableSSs     :: TVar [StorageServer]
@@ -31,6 +33,7 @@ data AppState = AppState {
   , globalManager    :: Manager
   , amountOfReplicas :: Int
   }
+
 
 data StorageServer = StorageServer {
     ssAddr :: ServerAddr
