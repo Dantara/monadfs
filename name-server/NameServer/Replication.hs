@@ -5,15 +5,16 @@ import           Control.Concurrent.STM.TVar
 import           Control.Monad
 import           Control.Monad.STM
 import           Data.Bifunctor
-import           Data.Containers.ListUtils   (nubOrd)
+import           Data.Containers.ListUtils     (nubOrd)
 import           Data.Either
-import           Data.Map                    (Map)
-import qualified Data.Map.Strict             as Map
-import           Data.Set                    (isSubsetOf)
-import qualified Data.Set                    as Set
+import           Data.Map                      (Map)
+import qualified Data.Map.Strict               as Map
+import           Data.Set                      (isSubsetOf)
+import qualified Data.Set                      as Set
 import           MonadFS.API.Types
 import           MonadFS.FileTree
 import           NameServer.Client.Requests
+import           NameServer.Server.Models.Root
 import           NameServer.Types
 
 
@@ -86,7 +87,7 @@ findFilesToReplicate tree r servers = let go' = go tree (DirPath "/") in
 checkFile :: FileNode -> FilePath -> Int -> [StorageServer]
   -> Either (Maybe FileForReplication) FileNode
 checkFile fn@(FileNode name (FileInfo size addrs)) path r servers
-  | addrsSet `isSubsetOf` serversSet = Right fn
+  | addrsSet `isSubsetOf` serversSet && Set.size addrsSet == r = Right fn
   | Set.null stillAlive = Left Nothing
   | otherwise = Left
     $ Just
@@ -105,3 +106,40 @@ checkFile fn@(FileNode name (FileInfo size addrs)) path r servers
     takeNOrLess _ []     = []
     takeNOrLess 0 _      = []
     takeNOrLess n (x:xs) = x : takeNOrLess (n - 1) xs
+
+
+data FixCommand
+  = CreateDir DirPath
+  | RemoveDir DirPath
+  | RemoveFile FilePath
+  deriving (Eq, Show)
+
+
+fixTree :: FileTree a -> FileTree b -> [FixCommand]
+fixTree ref tar = go ref tar (DirPath "/")
+  where
+    go :: FileTree a -> FileTree b -> DirPath -> [FixCommand]
+    go ref' tar' (DirPath path) = fixFiles <> fixMissingDirs <> fixRedundantDirs <> recFix
+      where
+        fixFiles = (\(FileName name) -> RemoveFile $ path <> "/" <> name)
+          <$> Set.toList
+                (Set.difference
+                        (Map.keysSet $ files tar') (Map.keysSet $ files ref'))
+
+        fixMissingDirs = (\(DirName name) -> CreateDir $ DirPath $ path <> "/" <> name)
+          <$> Set.toList (Set.difference (Map.keysSet refDirs) (Map.keysSet tarDirs))
+
+        fixRedundantDirs = (\(DirName name) -> CreateDir $ DirPath $ path <> "/" <> name)
+          <$> Set.toList (Set.difference (Map.keysSet tarDirs) (Map.keysSet refDirs))
+
+        recFix :: [FixCommand]
+        recFix = concat
+          $ (\(dm@(DirName name), t) ->
+               go t (maybeToVFS $ Map.lookup dm tarDirs) (DirPath $ path <> "/" <> name))
+          <$> Map.toList refDirs
+          where
+            maybeToVFS (Just x) = x
+            maybeToVFS Nothing  = initVFS
+
+        tarDirs = directories tar'
+        refDirs = directories ref'
