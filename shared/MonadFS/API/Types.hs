@@ -4,9 +4,8 @@
 module MonadFS.API.Types where
 
 import           Data.Aeson
-import           Data.ByteString
-import           Data.Text       (Text)
-import qualified Data.Text       as T
+import           Data.Text    (Text)
+import qualified Data.Text    as T
 import           GHC.Generics
 import           Servant
 

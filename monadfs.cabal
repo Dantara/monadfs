@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 0bd6af6c4be6ae60fc6e5b0fd111eef4934b5d4130f5cc2f043b8acbf4633689
+-- hash: 1f0b1da2da1f1e476b84e6f033a9438ebac823d0f9e04d1b0d9b00116d5c3471
 
 name:           monadfs
 version:        0.1.0.0
@@ -98,6 +98,22 @@ executable monadfs-client
 executable monadfs-name-server
   main-is: Main.hs
   other-modules:
+      NameServer.Cache
+      NameServer.Client
+      NameServer.Client.Requests
+      NameServer.Internals
+      NameServer.Replication
+      NameServer.Server
+      NameServer.Server.Controllers
+      NameServer.Server.Controllers.Dir
+      NameServer.Server.Controllers.File
+      NameServer.Server.Controllers.Root
+      NameServer.Server.Helpers
+      NameServer.Server.Models
+      NameServer.Server.Models.Dir
+      NameServer.Server.Models.File
+      NameServer.Server.Models.Root
+      NameServer.Types
       Paths_monadfs
   hs-source-dirs:
       name-server
