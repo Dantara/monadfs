@@ -63,3 +63,9 @@ data Config = Config {
 } deriving (Show, Generic, FromJSON)
 
 
+data FixCommand
+  = CreateDir DirPath
+  | RemoveDir DirPath
+  | RemoveFile FilePath
+  | LoadMissingFile LoadFile
+  deriving (Eq, Show)

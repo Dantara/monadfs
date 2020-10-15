@@ -1,3 +1,5 @@
+{-# LANGUAGE TupleSections #-}
+
 module NameServer.Replication where
 
 import           Control.Concurrent
@@ -31,9 +33,33 @@ runReplication state sec = forever $ do
   let mng = globalManager state
   let addrs = ssAddrs state
   let tServers = avaliableSSs state
+  let tTree = fileTree state
+  let r = amountOfReplicas state
+
+  tree <- readTVarIO tTree
   servers <- proceedRequestM mng $ lookupSSs addrs
+
+  let (replicas, addrsForUpdate, tree') = findFilesToReplicate tree r servers
+
   atomically $ writeTVar tServers servers
+  atomically $ writeTVar tTree tree'
+
+  trees <- proceedRequestM mng $ fetchStorageTrees addrs
+
+  let treesCommands = zip addrsForUpdate
+        $ concat
+        $ uncurry fixTree
+        <$> zip (repeat tree') trees
+
+  proceedRequestM mng $ runFixCommands (treesCommands <> replicasToCommands replicas)
+
   threadDelay (sec * 1000000)
+
+
+replicasToCommands :: [FileForReplication] -> [(ServerAddr, FixCommand)]
+replicasToCommands = foldr
+  (\r -> (<>) ((, LoadMissingFile
+                 $ LoadFile (filePath r) (takeFrom r)) <$> sendTo r)) []
 
 
 findFilesToReplicate :: VFS -> Int -> [StorageServer]
@@ -107,12 +133,6 @@ checkFile fn@(FileNode name (FileInfo size addrs)) path r servers
     takeNOrLess 0 _      = []
     takeNOrLess n (x:xs) = x : takeNOrLess (n - 1) xs
 
-
-data FixCommand
-  = CreateDir DirPath
-  | RemoveDir DirPath
-  | RemoveFile FilePath
-  deriving (Eq, Show)
 
 
 fixTree :: FileTree a -> FileTree b -> [FixCommand]
