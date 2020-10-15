@@ -25,7 +25,7 @@ data FileForReplication = FileForReplication {
   , fileNode :: FileNode
   , takeFrom :: ServerAddr
   , sendTo   :: [ServerAddr]
-  }
+  } deriving (Show)
 
 
 runReplication :: AppState -> Int -> IO ()
@@ -44,14 +44,15 @@ runReplication state sec = forever $ do
   atomically $ writeTVar tServers servers
   atomically $ writeTVar tTree tree'
 
-  trees <- proceedRequestM mng $ fetchStorageTrees addrs
+  trees <- proceedRequestM mng $ fetchStorageTrees addrsForUpdate
 
   let treesCommands = zip addrsForUpdate
         $ concat
         $ uncurry fixTree
         <$> zip (repeat tree') trees
 
-  proceedRequestM mng $ runFixCommands (treesCommands <> replicasToCommands replicas)
+  proceedRequestM mng
+    $ runFixCommands (treesCommands <> replicasToCommands replicas)
 
   threadDelay (sec * 1000000)
 
@@ -99,13 +100,13 @@ findFilesToReplicate tree r servers = let go' = go tree (DirPath "/") in
 
           nodeToFile (FileNode name info) = (name, info)
 
-    updateDirs :: DirPath -> (Map DirName VFS, [FileForReplication])
-    updateDirs (DirPath path) = bimap Map.fromList concat
-      $ unzip
-      $ (\(dm@(DirName n), t) ->
-         let go' = go t (DirPath $ path <> "/" <> n) in
-           ((dm, snd go'), fst go'))
-        <$> Map.toList (directories tree)
+          updateDirs :: DirPath -> (Map DirName VFS, [FileForReplication])
+          updateDirs (DirPath path') = bimap Map.fromList concat
+            $ unzip
+            $ (\(dm@(DirName n), t) ->
+                 let go' = go t (DirPath $ path' <> n <> "/") in
+                   ((dm, snd go'), fst go'))
+                        <$> Map.toList (directories tree')
 
 
 -- If no alive storage servers left for a given file,
@@ -125,7 +126,7 @@ checkFile fn@(FileNode name (FileInfo size addrs)) path r servers
 
     from = Set.elemAt 0 stillAlive
     to = takeNOrLess (r - Set.size stillAlive)
-      (Set.toList (Set.difference stillAlive serversSet))
+      (Set.toList (Set.difference serversSet stillAlive))
     newAddrs = Set.toList stillAlive <> to
     newFileNode = FileNode name (FileInfo size newAddrs)
 
@@ -141,21 +142,21 @@ fixTree ref tar = go ref tar (DirPath "/")
     go :: FileTree a -> FileTree b -> DirPath -> [FixCommand]
     go ref' tar' (DirPath path) = fixFiles <> fixMissingDirs <> fixRedundantDirs <> recFix
       where
-        fixFiles = (\(FileName name) -> RemoveFile $ path <> "/" <> name)
+        fixFiles = (\(FileName name) -> RemoveFile $ path <> name)
           <$> Set.toList
                 (Set.difference
                         (Map.keysSet $ files tar') (Map.keysSet $ files ref'))
 
-        fixMissingDirs = (\(DirName name) -> CreateDir $ DirPath $ path <> "/" <> name)
+        fixMissingDirs = (\(DirName name) -> CreateDir $ DirPath $ path <> name)
           <$> Set.toList (Set.difference (Map.keysSet refDirs) (Map.keysSet tarDirs))
 
-        fixRedundantDirs = (\(DirName name) -> CreateDir $ DirPath $ path <> "/" <> name)
+        fixRedundantDirs = (\(DirName name) -> CreateDir $ DirPath $ path <> name)
           <$> Set.toList (Set.difference (Map.keysSet tarDirs) (Map.keysSet refDirs))
 
         recFix :: [FixCommand]
         recFix = concat
           $ (\(dm@(DirName name), t) ->
-               go t (maybeToVFS $ Map.lookup dm tarDirs) (DirPath $ path <> "/" <> name))
+               go t (maybeToVFS $ Map.lookup dm tarDirs) (DirPath $ path <> name <> "/"))
           <$> Map.toList refDirs
           where
             maybeToVFS (Just x) = x

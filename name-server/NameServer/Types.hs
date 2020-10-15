@@ -38,7 +38,7 @@ data AppState = AppState {
 data StorageServer = StorageServer {
     ssAddr :: ServerAddr
   , ssSize :: Size
-  } deriving (Eq, Ord)
+  } deriving (Eq, Ord, Show)
 
 
 newtype RequestM a = RequestM { runRequestM :: ReaderT Manager IO a }
