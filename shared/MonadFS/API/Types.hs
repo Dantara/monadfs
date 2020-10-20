@@ -4,9 +4,11 @@
 module MonadFS.API.Types where
 
 import           Data.Aeson
-import           Data.Text    (Text)
-import qualified Data.Text    as T
+import           Data.ByteString.Lazy
+import           Data.Text            (Text)
+import qualified Data.Text            as T
 import           GHC.Generics
+import           Path
 import           Servant
 
 data FileStatus a
@@ -65,15 +67,18 @@ data FileInfo = FileInfo Size [ServerAddr]
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 
-newtype DirPath = DirPath String
-  deriving (Eq, Show, Generic, FromJSON, ToJSON)
+-- newtype DirPath = DirPath String
+--   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
+type AbsDirPath = Path Abs Dir
 
-instance FromHttpApiData DirPath where
-  parseUrlPiece t = Right $ DirPath $ T.unpack t
+type AbsFilePath = Path Abs File
 
-instance ToHttpApiData DirPath where
-  toUrlPiece (DirPath s) = T.pack s
+-- instance FromHttpApiData DirPath where
+--   parseUrlPiece t = Right $ DirPath $ T.unpack t
+
+-- instance ToHttpApiData DirPath where
+--   toUrlPiece (DirPath s) = T.pack s
 
 newtype FileName = FileName String
   deriving (Eq, Ord, Show, Generic, FromJSON,
@@ -84,13 +89,18 @@ newtype DirInfo = DirInfo [FileName]
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 
-data NewFile = NewFile FilePath Size
+data NewFile = NewFile AbsFilePath Size
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 
-data LoadFile = LoadFile FilePath ServerAddr
+data LoadFile = LoadFile AbsFilePath ServerAddr
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
 
 
-data SourceDest = SourceDest FilePath FilePath
+data SourceDest = SourceDest AbsFilePath AbsFilePath
   deriving (Eq, Show, Generic, FromJSON, ToJSON)
+
+
+newtype FileContent = FileContent ByteString
+
+data FileWrite = FileWrite AbsFilePath FileContent

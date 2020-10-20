@@ -11,16 +11,16 @@ type NameServerAPI = "init" :> Get '[JSON] SystemStatus
                 :<|> "file" :> FileAPI
                 :<|> "dir"  :> DirAPI
 
-type FileAPI = "create" :> ReqBody '[JSON] FilePath   :> Post '[JSON] (FileStatus ())
-          :<|> "read"   :> ReqBody '[JSON] FilePath   :> Post '[JSON] (FileStatus ServerAddr)
+type FileAPI = "create" :> ReqBody '[JSON] AbsFilePath   :> Post '[JSON] (FileStatus ())
+          :<|> "read"   :> ReqBody '[JSON] AbsFilePath   :> Post '[JSON] (FileStatus ServerAddr)
           :<|> "write"  :> ReqBody '[JSON] NewFile    :> Post '[JSON] (FileStatus [ServerAddr])
-          :<|> "delete" :> ReqBody '[JSON] FilePath   :> Post '[JSON] (FileStatus ())
-          :<|> "info"   :> QueryParam' '[Required] "file" FilePath
+          :<|> "delete" :> ReqBody '[JSON] AbsFilePath   :> Post '[JSON] (FileStatus ())
+          :<|> "info"   :> QueryParam' '[Required] "file" AbsFilePath
                :> Get '[JSON] (FileStatus FileInfo)
           :<|> "copy"   :> ReqBody '[JSON] SourceDest :> Post '[JSON] (FileStatus ())
           :<|> "move"   :> ReqBody '[JSON] SourceDest :> Post '[JSON] (FileStatus ())
 
-type DirAPI = "create" :> ReqBody '[JSON] DirPath  :> Post '[JSON] (DirStatus ())
-         :<|> "delete" :> ReqBody '[JSON] DirPath  :> Post '[JSON] (DirStatus ())
-         :<|> "info"   :> QueryParam' '[Required] "dir" DirPath :> Get '[JSON] (DirStatus DirInfo)
-         :<|> "exists" :> QueryParam' '[Required] "dir" DirPath :> Get '[JSON] (DirStatus ())
+type DirAPI = "create" :> ReqBody '[JSON] AbsDirPath  :> Post '[JSON] (DirStatus ())
+         :<|> "delete" :> ReqBody '[JSON] AbsDirPath  :> Post '[JSON] (DirStatus ())
+         :<|> "info"   :> QueryParam' '[Required] "dir" AbsDirPath :> Get '[JSON] (DirStatus DirInfo)
+         :<|> "exists" :> QueryParam' '[Required] "dir" AbsDirPath :> Get '[JSON] (DirStatus ())

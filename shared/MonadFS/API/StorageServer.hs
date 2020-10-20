@@ -17,14 +17,15 @@ type StorageServerAPI =
     :<|> "dir" :> DirAPI
 
 type FileAPI =
-  "create" :> ReqBody '[JSON] FilePath :> Post '[JSON] (FileStatus ())
-    :<|> "read" :> Raw
-    :<|> "write" :> MultipartForm Tmp (MultipartData Tmp) :> Post '[JSON] (FileStatus ())
-    :<|> "delete" :> ReqBody '[JSON] FilePath :> Post '[JSON] (FileStatus ())
+  "create" :> ReqBody '[JSON] AbsFilePath :> Post '[JSON] (FileStatus ())
+    :<|> "read" :> QueryParam' '[Required] "file" AbsFilePath
+                      :> Get '[OctetStream] FileContent
+    :<|> "write" :> ReqBody '[OctetStream] FileWrite :> Post '[JSON] (FileStatus ())
+    :<|> "delete" :> ReqBody '[JSON] AbsFilePath :> Post '[JSON] (FileStatus ())
     :<|> "copy" :> ReqBody '[JSON] SourceDest :> Post '[JSON] (FileStatus ())
     :<|> "move" :> ReqBody '[JSON] SourceDest :> Post '[JSON] (FileStatus ())
     :<|> "load" :> ReqBody '[JSON] LoadFile :> Post '[JSON] (FileStatus ())
 
 type DirAPI =
-  "create" :> ReqBody '[JSON] DirPath :> Post '[JSON] (DirStatus ())
-    :<|> "delete" :> ReqBody '[JSON] DirPath :> Post '[JSON] (DirStatus ())
+  "create" :> ReqBody '[JSON] AbsDirPath :> Post '[JSON] (DirStatus ())
+    :<|> "delete" :> ReqBody '[JSON] AbsDirPath :> Post '[JSON] (DirStatus ())
