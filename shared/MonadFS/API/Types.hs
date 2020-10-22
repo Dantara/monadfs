@@ -7,6 +7,7 @@ module MonadFS.API.Types where
 
 import           Data.Aeson
 import           Data.Bifunctor
+import           Data.Bits               (shiftL, shiftR)
 import           Data.ByteString.Lazy    (ByteString)
 import qualified Data.ByteString.Lazy    as BS
 import           Data.Int                (Int64)
@@ -14,6 +15,7 @@ import           Data.String             (fromString)
 import           Data.Text               (Text)
 import qualified Data.Text               as T
 import qualified Data.Text.Lazy.Encoding as T (decodeUtf8')
+import           Data.Word               (Word16, Word8)
 import           GHC.Generics
 import           Path
 import           Servant
@@ -137,19 +139,34 @@ maxPathLength :: Int64
 maxPathLength = 4096
 
 instance MimeRender OctetStream FileWrite where
-  mimeRender ctype (FileWrite p c) = encodedPath <> separator <> encodedContent
+  mimeRender ctype (FileWrite p c) = encodedPathLength <> encodedPath <> encodedContent
     where
       encodedPath :: ByteString
       encodedPath = fromString $ show p
-      separatorLength = maxPathLength - BS.length encodedPath
-      separator = BS.replicate separatorLength 0
+
+      encodedPathLength = BS.pack
+        $ w16ToW8
+        $ fromIntegral
+        $ BS.length encodedPath
+
       encodedContent = mimeRender ctype c
+
+      w16ToW8 :: Word16 -> [Word8]
+      w16ToW8 w = [fromIntegral $ shiftR w 8, fromIntegral $ shiftR (shiftL w 8) 8]
+
 
 instance MimeUnrender OctetStream FileWrite where
   mimeUnrender _ s = either Left (\p -> Right $ FileWrite (AbsFilePath p) content)
     $ eitherPath >>= pathParser
     where
-      (encodedPathWithSep, encodedContent) = BS.splitAt maxPathLength s
+      (pathLength, encodedPayload) = first (fromIntegral . w8ToInt . BS.unpack)
+        $ BS.splitAt 2 s
+
+      (encodedPath, encodedContent) = BS.splitAt pathLength encodedPayload
+
       content = FileContent encodedContent
-      eitherPath = bimap show show $ T.decodeUtf8' $ BS.takeWhile (/= 0) encodedPathWithSep
+      eitherPath = bimap show show $ T.decodeUtf8' encodedPath
       pathParser = first show . parseAbsFile
+
+      w8ToInt :: [Word8] -> Int
+      w8ToInt = foldl (\a x -> shiftL a 8 + fromIntegral x) 0
